@@ -1,0 +1,33 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "main"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-build:
+    name: "Smoke build (amd64)"
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build add-on image (amd64 only — full multi-arch happens on release)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./bookstack-rag
+          push: false
+          load: true
+          tags: bookstack-rag:ci
+          build-args: |
+            BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.12-alpine3.19

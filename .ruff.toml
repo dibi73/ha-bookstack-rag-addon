@@ -1,0 +1,45 @@
+# Ruff configuration for ha-bookstack-rag-addon.
+# Pattern aligned with the sister integration repo (ha-bookstack-sync),
+# but targets Python 3.12 since the add-on container ships its own runtime.
+
+target-version = "py312"
+
+[lint]
+select = [
+    "ALL",
+]
+
+ignore = [
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "D203", # no-blank-line-before-class (incompatible with formatter)
+    "D212", # multi-line-summary-first-line (incompatible with formatter)
+    "COM812", # incompatible with formatter
+    "ISC001", # incompatible with formatter
+    "RUF001", # German strings legitimately use en-dash/umlauts/non-ASCII chars
+    "RUF002", # same, for docstrings
+    "RUF003", # same, for comments
+]
+
+[lint.flake8-pytest-style]
+fixture-parentheses = false
+
+[lint.pyupgrade]
+keep-runtime-typing = true
+
+[lint.mccabe]
+max-complexity = 25
+
+[lint.per-file-ignores]
+# Tests have legitimately different conventions: assert is the tool, hardcoded
+# tokens are fixtures, shorter docstrings are idiomatic, etc.
+"bookstack-rag/tests/**/*.py" = [
+    "ANN",     # type annotations are nice-to-have, not load-bearing in tests
+    "ARG",     # unused fixture parameters are normal
+    "D",       # docstring style is overkill for assertion-only test bodies
+    "INP001",  # tests/ is intentionally not a package
+    "PLR2004", # magic numbers in assertions are usually clearer than constants
+    "S101",    # `assert` IS the tool
+    "S105",    # hardcoded "passwords" are fixture inputs, not real secrets
+    "S106",    # same, as keyword args
+    "SLF001",  # accessing _private members of own code is fine in tests
+]

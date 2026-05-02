@@ -1,0 +1,8 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Halt the add-on if the API service exits, so HA Supervisor can restart it.
+# ==============================================================================
+
+bashio::log.warning "API service exited — bringing the add-on down."
+
+exec /run/s6/basedir/bin/halt

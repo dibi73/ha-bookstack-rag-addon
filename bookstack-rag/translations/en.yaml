@@ -1,0 +1,10 @@
+configuration:
+  bookstack_export_path:
+    name: BookStack export path
+    description: >-
+      Path inside the container where the Markdown export produced by the
+      ha-bookstack-sync integration lives. The default matches the
+      integration's default export path.
+
+network:
+  8000/tcp: Web UI port (only used when ingress is disabled — default keeps it through ingress only)

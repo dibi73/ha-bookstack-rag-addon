@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Coverage
+.coverage
+coverage.xml
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Build / Docker
+*/build/*
+*/dist/*
+*.tar
+*.tar.gz
+
+# Local add-on data (Qdrant volume, etc.) — should never be committed
+_data/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example

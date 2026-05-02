@@ -1,0 +1,3 @@
+pytest<9
+pytest-asyncio<2
+httpx

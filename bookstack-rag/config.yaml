@@ -1,0 +1,25 @@
+name: BookStack RAG
+version: "0.1.0"
+slug: bookstack_rag
+description: Local RAG over BookStack-exported Home Assistant documentation
+url: "https://github.com/dibi73/ha-bookstack-rag-addon"
+arch:
+  - amd64
+  - aarch64
+  - armv7
+startup: services
+boot: auto
+init: false
+ingress: true
+ingress_port: 8000
+panel_icon: mdi:database-search
+panel_title: BookStack RAG
+homeassistant_api: false
+host_network: false
+auth_api: false
+map:
+  - config:ro
+options:
+  bookstack_export_path: /config/bookstack_export
+schema:
+  bookstack_export_path: str

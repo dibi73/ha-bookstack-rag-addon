@@ -1,0 +1,42 @@
+---
+name: "Feature request"
+description: "Suggest an idea for this add-on"
+body:
+- type: markdown
+  attributes:
+    value: Before you open a new feature request, search existing requests to see if someone else proposed it already.
+
+- type: checkboxes
+  attributes:
+    label: Checklist
+    options:
+      - label: I have filled out the template to the best of my ability.
+        required: true
+      - label: This contains exactly one feature request (open separate requests for separate features).
+        required: true
+      - label: This is not a duplicate of [previous requests](../../issues?q=is%3Aissue+label%3A%22enhancement%22).
+        required: true
+
+- type: textarea
+  attributes:
+    label: "Is your feature request related to a problem? Please describe."
+    placeholder: "I'm always frustrated when [...]"
+  validations:
+    required: true
+
+- type: textarea
+  attributes:
+    label: "Describe the solution you'd like"
+  validations:
+    required: true
+
+- type: textarea
+  attributes:
+    label: "Describe alternatives you've considered"
+  validations:
+    required: true
+
+- type: textarea
+  attributes:
+    label: "Additional context"
+    description: "Anything else — screenshots, related projects, links to upstream discussions."
