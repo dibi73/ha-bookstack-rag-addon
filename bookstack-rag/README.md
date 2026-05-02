@@ -5,6 +5,11 @@ produced by the
 [`ha-bookstack-sync`](https://github.com/dibi73/ha-bookstack-sync)
 integration.
 
+> ⏱️ **Erstinstallation dauert 5-15 Minuten** (lokaler Container-Build mit
+> PyTorch + Embedding-Modell-Pre-Download). Folgende Updates sind schnell.
+> v0.5.0+ wird vorgebaute Images über ghcr.io ausliefern und das
+> Erstinstall-Erlebnis auf ~2 Min reduzieren.
+
 ## Stage 3 — v0.4.0
 
 Built-in vanilla web UI plus source-link enrichment. Open the add-on

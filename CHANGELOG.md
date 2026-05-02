@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-05-02
+
+Hotfix for the v0.4.0 install path. First-install attempts on real
+Home Assistant instances failed with `apt-get: not found` because the
+Supervisor's local-build path **ignores `build.yaml`** and injects its
+own alpine base image (`ghcr.io/home-assistant/base:latest`) via the
+`BUILD_FROM` build-arg. Our Dockerfile assumed `BUILD_FROM` would be
+the value pinned in `build.yaml` — it never reaches the Supervisor.
+
+### Fixed
+
+- **Dockerfile hard-codes its base image** as `python:3.12-slim-bookworm`
+  instead of consuming `${BUILD_FROM}`. Supervisor's BUILD_FROM
+  injection no longer breaks the build, and the GitHub-Actions smoke
+  build matches the Supervisor-local-build path bit-for-bit.
+
+### Changed
+
+- `bookstack-rag/config.yaml` — `description:` extended with a hint
+  that first install builds locally for 5-15 min so users know what to
+  expect before they hit Install.
+- `bookstack-rag/DOCS.md` and `bookstack-rag/README.md` — prominent
+  ⏱️ warning at the top about first-install duration, disk and RAM
+  requirements during the build.
+- `bookstack-rag/build.yaml` — left in place but with an explanatory
+  comment noting that Supervisor ignores it; only consumed by the
+  `home-assistant/builder` action that v0.5.0+ will wire up.
+- `.github/workflows/build.yml` — drop the now-redundant
+  `BUILD_FROM=python:3.12-slim-bookworm` build-arg.
+
+### Notes
+
+- v0.5.0 is queued as the proper fix: publish multi-arch images to
+  `ghcr.io` via `home-assistant/builder` action on each tag, add
+  `image:` to `config.yaml`. Supervisor will then pull instead of
+  building locally — first install drops from 5-15 min to ~2 min.
+- No code or behaviour change. All 91 tests still pass.
+
 ## [0.4.0] - 2026-05-02
 
 Stage 3 — the add-on now ships with a built-in single-page web UI plus
@@ -260,7 +298,8 @@ Initial Stage 0 skeleton release.
   enter the dependency closure).
 - Indexing, embedding, RAG and the web UI all land in v0.2.0+.
 
-[Unreleased]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.1.1...v0.2.0

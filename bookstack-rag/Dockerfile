@@ -2,17 +2,21 @@
 # Stage 1 build — multi-stage so we can cherry-pick the qdrant binary
 # from the upstream qdrant image without dragging in its full filesystem.
 #
-# Base is the upstream python:3.12-slim-bookworm (debian/glibc). Home
-# Assistant publishes only an alpine variant of base-python, but PyTorch
-# (transitive via sentence-transformers) ships no musllinux wheels. We
-# bootstrap s6-overlay v3 ourselves so the supervisor still has the
-# auto-restart-on-PID-1-death behaviour HA expects.
+# Base is the upstream python:3.12-slim-bookworm (debian/glibc) hard-coded
+# rather than driven by ARG BUILD_FROM. Reason: Home Assistant Supervisor's
+# local-build path ignores `build.yaml` and injects its own
+# ghcr.io/home-assistant/base:latest (alpine) as BUILD_FROM when the value
+# is unset, which then breaks our `apt-get` step (`apk` lives there, not
+# `apt-get`). PyTorch ships no musllinux wheels, so alpine is a dead end
+# for the ML pipeline. By hard-coding the base we ensure the same image
+# both in Supervisor-local-build and in the GitHub-Actions smoke build.
+# v0.5.0+ will publish the resulting image to ghcr.io and reference it via
+# `image:` in config.yaml so users skip the local build entirely.
 # ==============================================================================
 
-ARG BUILD_FROM
 FROM qdrant/qdrant:v1.17.1 AS qdrant_source
 
-FROM ${BUILD_FROM}
+FROM python:3.12-slim-bookworm
 
 ARG S6_OVERLAY_VERSION=3.2.0.2
 ARG TARGETARCH
@@ -80,6 +84,6 @@ LABEL \
     io.hass.name="BookStack RAG" \
     io.hass.description="Local RAG over BookStack-exported Home Assistant documentation" \
     io.hass.type="addon" \
-    io.hass.version="0.4.0" \
+    io.hass.version="0.4.1" \
     io.hass.arch="amd64|aarch64" \
     maintainer="dibi73 <https://github.com/dibi73>"
