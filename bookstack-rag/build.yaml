@@ -1,14 +1,16 @@
-# Multi-arch base images consumed by home-assistant/builder.
+# Multi-arch base images for the home-assistant/builder GitHub Action.
+#
+# NOTE: Home Assistant Supervisor's *local-build* path (the one a user
+# triggers with "Install" on the add-on store) does NOT read this file —
+# it injects its own alpine base image via the BUILD_FROM build-arg. The
+# Dockerfile therefore hard-codes its base image and ignores BUILD_FROM
+# altogether. This `build.yaml` only matters once we wire up the
+# `home-assistant/builder` GitHub Action (planned for v0.5.0), which
+# DOES read it and publishes per-arch images to ghcr.io.
 #
 # armv7 was supported in v0.1.x but dropped from v0.2.0: PyTorch ships no
-# official armv7 wheels.
-#
-# Stage 1 also moves off the alpine variant we used in v0.1.x — PyTorch
-# has no musllinux (alpine/musl) wheels either, only manylinux (glibc).
-# Home Assistant only publishes alpine variants of base-python, so we
-# can no longer reuse their image. We use the upstream `python:3.12-slim`
-# (debian-bookworm based, glibc) and bootstrap s6-overlay v3 ourselves
-# in the Dockerfile.
+# official armv7 wheels. Alpine was tried in v0.1.x and dropped in v0.2.0
+# because PyTorch / ONNX Runtime have no musllinux wheels.
 build_from:
   amd64: python:3.12-slim-bookworm
   aarch64: python:3.12-slim-bookworm

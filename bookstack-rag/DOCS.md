@@ -2,6 +2,15 @@
 
 This page is rendered inside the Home Assistant Add-on UI.
 
+> ⏱️ **Erstinstallation dauert 5-15 Minuten.** Der HA-Supervisor baut den
+> Container lokal auf deinem Host: `python:3.12-slim-bookworm`-Base
+> ziehen, ~700 MB PyTorch installieren, das `nomic-embed-text`-Modell
+> (~500 MB) vorab herunterladen, das Qdrant-Binary kopieren. Während
+> dieser Zeit zeigt HA *„Installing…"* — das ist normal, nicht hängen.
+> Folgende Updates und Container-Restarts sind viel schneller (Layer-
+> Cache + Modell ist im Image gebaked). Erstinstall braucht ~3 GB freie
+> Disk und ~2 GB freien RAM auf dem HA-Host.
+
 ## What this add-on does
 
 It indexes the Markdown export produced by the sister integration

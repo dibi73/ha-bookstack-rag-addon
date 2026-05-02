@@ -29,5 +29,3 @@ jobs:
           push: false
           load: true
           tags: bookstack-rag:ci
-          build-args: |
-            BUILD_FROM=python:3.12-slim-bookworm

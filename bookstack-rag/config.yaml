@@ -1,7 +1,7 @@
 name: BookStack RAG
-version: "0.4.0"
+version: "0.4.1"
 slug: bookstack_rag
-description: Local RAG over BookStack-exported Home Assistant documentation
+description: "Local RAG over BookStack-exported HA docs. First install: 5-15 min build (PyTorch + nomic-embed model)."
 url: "https://github.com/dibi73/ha-bookstack-rag-addon"
 arch:
   - amd64
