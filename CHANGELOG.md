@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-02
+
+Maintenance release — consolidates the five Dependabot bumps that
+arrived right after the v0.1.0 initial push.
+
+### Changed
+
+- Bump `fastapi` from 0.115.6 to 0.136.1 (top-level + add-on requirements).
+- Bump `uvicorn` from 0.32.1 to 0.46.0 (top-level + add-on requirements).
+- Bump `pytest` constraint from `<9` to `<10` (test requirements).
+- Bump `docker/build-push-action` from v6 to v7 (CI smoke build).
+- Bump `docker/setup-buildx-action` from v3 to v4 (CI smoke build).
+
+### Notes
+
+- All bumps were merged in one consolidated PR rather than five
+  individual ones to keep `main` history compact and reduce
+  rebase-cascade noise on the open Dependabot PRs.
+- No code changes — the 7-test suite stays green against the new
+  FastAPI/uvicorn versions.
+
 ## [0.1.0] - 2026-05-02
 
 Initial Stage 0 skeleton release.
@@ -46,5 +67,6 @@ Initial Stage 0 skeleton release.
   enter the dependency closure).
 - Indexing, embedding, RAG and the web UI all land in v0.2.0+.
 
-[Unreleased]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/dibi73/ha-bookstack-rag-addon/releases/tag/v0.1.0

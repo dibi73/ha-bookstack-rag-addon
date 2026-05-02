@@ -1,5 +1,5 @@
 name: BookStack RAG
-version: "0.1.0"
+version: "0.1.1"
 slug: bookstack_rag
 description: Local RAG over BookStack-exported Home Assistant documentation
 url: "https://github.com/dibi73/ha-bookstack-rag-addon"
