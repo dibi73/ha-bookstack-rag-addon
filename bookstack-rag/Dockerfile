@@ -16,7 +16,7 @@
 
 FROM qdrant/qdrant:v1.17.1 AS qdrant_source
 
-FROM python:3.12-slim-bookworm
+FROM python:3.14-slim-bookworm
 
 ARG S6_OVERLAY_VERSION=3.2.0.2
 ARG TARGETARCH
