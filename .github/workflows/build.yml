@@ -30,4 +30,4 @@ jobs:
           load: true
           tags: bookstack-rag:ci
           build-args: |
-            BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.12
+            BUILD_FROM=python:3.12-slim-bookworm

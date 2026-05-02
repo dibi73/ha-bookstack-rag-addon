@@ -1,11 +1,13 @@
-#!/usr/bin/with-contenv bashio
+#!/command/with-contenv bash
 # ==============================================================================
 # Start the in-container qdrant sidecar
 # ==============================================================================
 
+set -e
+
 mkdir -p /data/qdrant/storage /data/qdrant/snapshots
 
-bashio::log.info "Starting qdrant on localhost:6333 (storage at /data/qdrant)..."
+echo "[qdrant] starting on localhost:6333 (storage at /data/qdrant)..."
 
 # Override storage paths and bind only to localhost — the API service in the
 # same container is the only intended consumer.

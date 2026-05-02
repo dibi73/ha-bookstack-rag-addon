@@ -46,13 +46,13 @@ integration and the web UI follow in v0.3.0 / v0.4.0.
   PyTorch ships no official armv7 wheels. Pi 4 owners on 32-bit
   Raspberry Pi OS need to switch to a 64-bit OS image. Same
   hardware, different OS.
-- **Breaking**: container base moved from
-  `ghcr.io/home-assistant/{arch}-base-python:3.12-alpine3.19` to
-  `ghcr.io/home-assistant/{arch}-base-python:3.12` (debian variant).
-  Reason: PyTorch and ONNX Runtime ship no musllinux wheels in
-  2026, only manylinux. Alpine + musl was a dead end for the
-  ML pipeline. Image grew ~150 MB but pip can now resolve all wheels
-  without source builds.
+- **Breaking**: container base moved off Home Assistant's published
+  `{arch}-base-python:3.12-alpine3.19` and onto the upstream
+  `python:3.12-slim-bookworm` (debian/glibc). Reason: PyTorch and
+  ONNX Runtime ship no musllinux wheels in 2026, and HA only
+  publishes alpine variants of base-python. We bootstrap s6-overlay
+  v3 ourselves in the Dockerfile (~10 lines) and drop bashio in
+  favour of plain bash + echo-prefixed logs.
 - Image is larger (~2-3 GB) due to PyTorch + the pre-baked embedding
   model. Container startup still fast (~5-10 s) because the model
   ships in the image.
