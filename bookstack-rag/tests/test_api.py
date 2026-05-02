@@ -76,6 +76,64 @@ def test_status_reports_llm_configured_false_when_no_llm(
     assert response.json()["llm_configured"] is False
 
 
+def test_query_passes_source_link_options_to_llm(  # noqa: PLR0913
+    options_file: Path,
+    fake_embedder,
+    index,
+    pipeline: Pipeline,
+    fake_llm: FakeLLMClient,
+    conversations_store,
+    write_markdown,
+    monkeypatch,
+) -> None:
+    """bookstack_base_url + homeassistant_base_url end up in the LLM prompt."""
+    options_file.write_text(
+        json.dumps(
+            {
+                "bookstack_export_path": str(pipeline.export_path),
+                "bookstack_base_url": "http://bookstack.lokal",
+                "homeassistant_base_url": "http://hass.local",
+            },
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("ADDON_OPTIONS", str(options_file))
+    config = load_config()
+
+    app = FastAPI(title="t", version=__version__)
+    app.state.config = config
+    app.state.embedder = fake_embedder
+    app.state.index = index
+    app.state.pipeline = pipeline
+    app.state.llm = fake_llm
+    app.state.conversations = conversations_store
+    app.include_router(router, prefix="/api")
+
+    write_markdown(
+        "device.md",
+        "Aqara Motion Sensor in the hallway.",
+        metadata={
+            "title": "Bewegungsmelder Gang",
+            "bookstack_page_id": 142,
+            "ha_object_kind": "device",
+            "ha_object_id": "abc",
+        },
+    )
+    pipeline.reconcile_all()
+
+    with TestClient(app) as client_with_urls:
+        response = client_with_urls.post(
+            "/api/query",
+            json={"text": "Was macht der Bewegungsmelder am Gang?"},
+        )
+    assert response.status_code == 200
+
+    sent = fake_llm.calls[-1]
+    user_msg = sent[-1]["content"]
+    assert "[BookStack](http://bookstack.lokal/link/142)" in user_msg
+    assert "[HA Gerät](http://hass.local/config/devices/device/abc)" in user_msg
+
+
 def test_query_oneshot_returns_answer_and_creates_conversation(
     client: TestClient,
     pipeline: Pipeline,
@@ -304,3 +362,43 @@ def test_reindex_runs_reconcile_sweep(
 def test_reindex_503_when_pipeline_not_ready(client_no_index: TestClient) -> None:
     response = client_no_index.post("/api/reindex")
     assert response.status_code == 503
+
+
+# ---- UI mount -------------------------------------------------------------
+
+
+def _build_ui_only_app() -> FastAPI:
+    """FastAPI app that mounts only the static UI (skips production lifespan)."""
+    from app.main import UI_DIR  # noqa: PLC0415
+    from fastapi.staticfiles import StaticFiles  # noqa: PLC0415
+
+    app = FastAPI(title="ui-only")
+    app.mount("/", StaticFiles(directory=UI_DIR, html=True), name="ui")
+    return app
+
+
+def test_ui_index_html_is_served_at_root() -> None:
+    """The static UI is mounted at / and serves index.html for the root path."""
+    with TestClient(_build_ui_only_app()) as ui_client:
+        response = ui_client.get("/")
+    assert response.status_code == 200
+    assert "BookStack RAG" in response.text
+    assert response.headers["content-type"].startswith("text/html")
+
+
+def test_ui_app_js_is_served() -> None:
+    """The vanilla SPA's JS bundle is reachable as a sibling of /."""
+    with TestClient(_build_ui_only_app()) as ui_client:
+        response = ui_client.get("/app.js")
+    assert response.status_code == 200
+    assert "BookStack RAG" in response.text  # the file's banner comment
+    assert response.headers["content-type"].startswith(
+        ("application/javascript", "text/javascript"),
+    )
+
+
+def test_ui_app_css_is_served() -> None:
+    with TestClient(_build_ui_only_app()) as ui_client:
+        response = ui_client.get("/app.css")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/css")

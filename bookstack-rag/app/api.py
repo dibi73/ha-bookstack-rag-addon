@@ -217,6 +217,8 @@ async def query(
         history=history_dicts,
         hits=hits,
         query=body.text,
+        bookstack_base_url=config.bookstack_base_url,
+        homeassistant_base_url=config.homeassistant_base_url,
     )
 
     store.append(conv_id, "user", body.text)

@@ -11,22 +11,26 @@ proxy, …) and a simple web UI for the whole household.
 
 ## Status
 
-**Stage 2 — v0.3.0**.
+**Stage 3 — v0.4.0**.
 
-The add-on now synthesises natural-language answers via any
-OpenAI-compatible LLM endpoint (Ollama, OpenAI, Anthropic, Gemini,
-self-hosted vLLM/LM Studio). Multi-turn chat is persisted, and
-streaming-SSE responses let a future web UI render tokens live.
+This release adds the **built-in web UI** plus inline source-link
+enrichment. Open the add-on panel in Home Assistant, type a question,
+read the streamed answer with clickable links jumping straight back
+to BookStack (for the doc) or to the HA frontend (to edit the actual
+device).
 
 What ships:
-- Everything from v0.2.0 (file watcher, local embedding, Qdrant
-  sidecar, `/api/reindex`).
-- `POST /api/query` extended with `conversation_id` (multi-turn) and
-  `stream: true` (SSE).
-- Conversation persistence in SQLite at `/data/conversations.db`.
-- New endpoints: `GET/DELETE /api/conversations[/{id}]`.
-- LLM is **off by default** — set `llm_base_url` and `llm_model` to
-  enable. Without them the add-on stays in v0.2.0 retrieval-only mode.
+- Everything from v0.3.0 (LLM integration, multi-turn chat, SSE
+  streaming, conversation persistence).
+- **Vanilla SPA web UI** at `/` — single HTML/CSS/JS bundle, no build
+  step, mobile-responsive, light/dark theme follows system. Streams
+  answers token by token, renders Markdown safely (HTML-escape-first
+  before pattern-match).
+- **Source-link enrichment**: configure `bookstack_base_url` and
+  `homeassistant_base_url`, and each `<doc>` context block in the
+  LLM prompt gets a `Sources: [BookStack](...) · [HA Gerät](...)`
+  line. The LLM weaves them into its answer; the UI renders them as
+  clickable links automatically.
 
 > 64-bit OS required since v0.2.0 (no armv7 / 32-bit Pi OS support —
 > PyTorch ships no armv7 wheels).
@@ -77,6 +81,13 @@ Web UI through Home Assistant Ingress
 | `max_turns` | Conversation history truncation — last N user/assistant pairs sent to LLM. Default 20. |
 | `system_prompt` | Optional override for the built-in bilingual system prompt. |
 
+### Source links (off by default)
+
+| Option | Description |
+|---|---|
+| `bookstack_base_url` | Public URL of your BookStack instance, e.g. `http://bookstack.lokal:6875`. Used to build `[BookStack](.../link/<page-id>)` links the LLM can cite. |
+| `homeassistant_base_url` | Public URL of your HA instance, e.g. `http://homeassistant.local:8123`. Used to build `/config/devices/device/<id>` (etc.) deep-links so the LLM and the UI can offer "edit this device" jumps. |
+
 #### LLM endpoint examples
 
 ```yaml
@@ -121,8 +132,9 @@ All endpoints are reachable through the HA Ingress panel.
   Qdrant index, `/api/query` returning top-k documents.
 - [x] **Stage 2 (v0.3.0)** — LLM integration with multi-turn chat and
   Server-Sent-Events streaming over any OpenAI-compatible endpoint.
-- [ ] **Stage 3 (v0.4.0)** — Web UI: input field, answer display, source
-  links back to BookStack pages.
+- [x] **Stage 3 (v0.4.0)** — Vanilla web UI with streaming Markdown
+  rendering, conversation history sidebar, mobile-responsive layout,
+  inline source-link citations.
 - [ ] **Stage 4+** — HA Conversation platform integration (voice
   control), multi-LLM routing, source re-ranking.
 

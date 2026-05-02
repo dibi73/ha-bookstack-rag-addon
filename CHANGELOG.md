@@ -7,6 +7,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-02
+
+Stage 3 — the add-on now ships with a built-in single-page web UI plus
+the source-link enrichment that lets the LLM cite BookStack pages and
+Home Assistant deep-links inline in its answers.
+
+### Added
+
+- **Vanilla SPA web UI** at `/` (mounted at the add-on's ingress
+  panel root). Pure HTML/CSS/JS, no build step, no npm. Layout:
+  - Composer at the bottom (textarea + Enter to send,
+    Shift+Enter for newline).
+  - Conversation column with user bubbles, assistant bubbles
+    rendered as Markdown, plus a collapsible per-answer hits list
+    showing the retrieved documents with score + preview.
+  - Sidebar with the chat history (most-recently-updated first,
+    per-row delete button), a "+ Neuer Chat" button, and status
+    pills showing index size + LLM-configured state.
+  - Mobile-responsive: sidebar collapses to an overlay with a
+    hamburger toggle when the viewport drops below 720 px.
+  - Light / dark themes follow `prefers-color-scheme`.
+- **Streaming consumption** in the UI via `fetch` + ReadableStream
+  (`EventSource` is GET-only). Each `event: delta` re-renders the
+  in-progress assistant bubble; the streaming cursor disappears on
+  `event: done`. Source hits arrive on `event: hit` and are
+  attached to the bubble's hits panel.
+- **Tiny pure-JS Markdown renderer** (~80 lines) with HTML-escape-
+  first-then-pattern-match flow. Covers paragraphs, headers,
+  fenced code, inline code, bold, italic, links, lists. Links go
+  through a safe-href whitelist (`http://`, `https://`, relative).
+  The LLM cannot inject `<script>` because everything is escaped
+  before any tags are introduced.
+- **Source-link enrichment** in the LLM prompt: when both
+  `bookstack_base_url` and / or `homeassistant_base_url` are
+  configured and the hit's frontmatter carries the matching id
+  fields, each `<doc>` block in the prompt gets a trailing
+  `Sources: [BookStack](...) · [HA Gerät](...)` line. The LLM is
+  instructed to cite those Markdown links sparingly so the user
+  can jump to the BookStack page (for context) or to the HA UI
+  (to edit the actual device, automation, area, …).
+- New configuration options: `bookstack_base_url` (URL, optional)
+  and `homeassistant_base_url` (URL, optional).
+- `HA_DEEP_LINK_PATTERNS` constant in `app/llm.py` mirrors the
+  per-object-kind URL table from Architektur §3 (device, area,
+  automation, script, scene, integration, entity, helper).
+
+### Changed
+
+- Default system prompt extended with one paragraph telling the
+  LLM how to use the new "Sources" lines.
+- `app.main.create_app()` mounts `app/ui/` as static files at `/`
+  when the directory exists. The mount is a no-op for tests that
+  build their own minimal app.
+
+### Notes
+
+- 91 tests (was 76 in v0.3.0). The 15 new tests cover
+  `build_source_links` for every `ha_object_kind`, base-URL
+  trailing-slash normalisation, prompt-builder source-line
+  inclusion, end-to-end URL flow through `/api/query` to the
+  FakeLLMClient, plus three static-file-serving smoke tests for
+  the SPA bundle.
+- Web UI is **not** unit-tested — vanilla JS, manual smoke testing
+  is the intentional Stage-3 strategy. Stage 4+ may introduce
+  Playwright if the UI grows.
+- HA Ingress: all client-side fetch calls use relative URLs
+  (`api/query`, `api/conversations/...`) so the SPA works correctly
+  whether served at the add-on root or under
+  `/api/hassio_ingress/<token>/`.
+
 ## [0.3.0] - 2026-05-02
 
 Stage 2 — the add-on now synthesises natural-language answers via a
@@ -190,7 +260,8 @@ Initial Stage 0 skeleton release.
   enter the dependency closure).
 - Indexing, embedding, RAG and the web UI all land in v0.2.0+.
 
-[Unreleased]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.1.0...v0.1.1

@@ -5,13 +5,12 @@ produced by the
 [`ha-bookstack-sync`](https://github.com/dibi73/ha-bookstack-sync)
 integration.
 
-## Stage 2 — v0.3.0
+## Stage 3 — v0.4.0
 
-Indexing + retrieval (v0.2.0) plus LLM-synthesised answers. The add-on
-wires an embedded Qdrant sidecar through any OpenAI-compatible
-chat-completions endpoint (Ollama, OpenAI, Anthropic, Gemini,
-self-hosted vLLM/LM Studio). Multi-turn chat is persisted in SQLite and
-answers can stream over Server-Sent Events. Web UI follows in v0.4.0.
+Built-in vanilla web UI plus source-link enrichment. Open the add-on
+panel in Home Assistant, ask a question, read the streamed answer with
+inline links jumping back to BookStack (for the doc) or to the HA
+frontend (to edit the device directly).
 
 ## Configuration
 
@@ -34,8 +33,16 @@ answers can stream over Server-Sent Events. Web UI follows in v0.4.0.
 | `max_turns` | History truncation — last N user/assistant pairs. Default 20. |
 | `system_prompt` | Optional system-prompt override. |
 
+### Source links (off by default)
+
+| Option | Description |
+|---|---|
+| `bookstack_base_url` | Public BookStack URL. Empty skips BookStack source links. |
+| `homeassistant_base_url` | Public Home Assistant URL. Empty skips HA deep-links. |
+
 ## Endpoints
 
+- Static UI at `/` (mounted under HA Ingress)
 - `GET /api/status` — readiness + counts + `llm_configured` flag
 - `POST /api/query` — body `{text, top_k?, conversation_id?, stream?}`
 - `POST /api/reindex` — manual reconcile sweep

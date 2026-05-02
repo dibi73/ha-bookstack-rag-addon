@@ -1,5 +1,5 @@
 name: BookStack RAG
-version: "0.3.0"
+version: "0.4.0"
 slug: bookstack_rag
 description: Local RAG over BookStack-exported Home Assistant documentation
 url: "https://github.com/dibi73/ha-bookstack-rag-addon"
@@ -28,6 +28,8 @@ options:
   llm_timeout: 60
   max_turns: 20
   system_prompt: ""
+  bookstack_base_url: ""
+  homeassistant_base_url: ""
 schema:
   bookstack_export_path: str
   embedding_model: str?
@@ -38,3 +40,5 @@ schema:
   llm_timeout: "int(5,600)?"
   max_turns: "int(1,200)?"
   system_prompt: str?
+  bookstack_base_url: url?
+  homeassistant_base_url: url?

@@ -19,16 +19,31 @@ from app.llm import (
     LLMClient,
     LLMNotConfiguredError,
     build_messages,
+    build_source_links,
 )
 
 
-def _hit(title: str, preview: str) -> SearchHit:
+def _hit(
+    title: str,
+    preview: str,
+    *,
+    page_id: int | None = 10,
+    payload: dict | None = None,
+) -> SearchHit:
+    full_payload = {
+        "title": title,
+        "content_preview": preview,
+        "bookstack_page_id": page_id,
+    }
+    if payload:
+        full_payload.update(payload)
     return SearchHit(
         doc_id="1",
         score=0.9,
         title=title,
         content_preview=preview,
-        bookstack_page_id=10,
+        bookstack_page_id=page_id,
+        payload=full_payload,
     )
 
 
@@ -83,6 +98,146 @@ def test_build_messages_includes_history_in_order() -> None:
 
 def test_default_system_prompt_is_bilingual() -> None:
     assert "German" in DEFAULT_SYSTEM_PROMPT or "language" in DEFAULT_SYSTEM_PROMPT
+
+
+# --- build_source_links ----------------------------------------------------
+
+
+def test_source_links_empty_when_no_urls_configured() -> None:
+    payload = {
+        "bookstack_page_id": 42,
+        "ha_object_kind": "device",
+        "ha_object_id": "x1",
+    }
+    assert (
+        build_source_links(
+            payload,
+            bookstack_base_url="",
+            homeassistant_base_url="",
+        )
+        is None
+    )
+
+
+def test_source_links_bookstack_only() -> None:
+    payload = {"bookstack_page_id": 142}
+    line = build_source_links(
+        payload,
+        bookstack_base_url="http://bookstack.lokal",
+        homeassistant_base_url="",
+    )
+    assert line == "[BookStack](http://bookstack.lokal/link/142)"
+
+
+def test_source_links_strips_trailing_slash_on_base_url() -> None:
+    payload = {"bookstack_page_id": 142}
+    line = build_source_links(
+        payload,
+        bookstack_base_url="http://bookstack.lokal/",
+        homeassistant_base_url="",
+    )
+    assert "//link/" not in line
+
+
+def test_source_links_ha_device() -> None:
+    payload = {"ha_object_kind": "device", "ha_object_id": "abc"}
+    line = build_source_links(
+        payload,
+        bookstack_base_url="",
+        homeassistant_base_url="http://homeassistant.local:8123",
+    )
+    assert (
+        line == "[HA Gerät](http://homeassistant.local:8123/config/devices/device/abc)"
+    )
+
+
+def test_source_links_ha_automation() -> None:
+    payload = {"ha_object_kind": "automation", "ha_object_id": "auto_1"}
+    line = build_source_links(
+        payload,
+        bookstack_base_url="",
+        homeassistant_base_url="http://hass.local",
+    )
+    assert "/config/automation/edit/auto_1" in line
+    assert "[HA Automation]" in line
+
+
+def test_source_links_ha_helper_no_id_in_url() -> None:
+    payload = {"ha_object_kind": "helper", "ha_object_id": "anything"}
+    line = build_source_links(
+        payload,
+        bookstack_base_url="",
+        homeassistant_base_url="http://hass.local",
+    )
+    assert line == "[HA Helfer](http://hass.local/config/helpers)"
+
+
+def test_source_links_skips_unknown_object_kind() -> None:
+    payload = {"ha_object_kind": "spaceship", "ha_object_id": "abc"}
+    line = build_source_links(
+        payload,
+        bookstack_base_url="",
+        homeassistant_base_url="http://hass.local",
+    )
+    assert line is None
+
+
+def test_source_links_combines_both() -> None:
+    payload = {
+        "bookstack_page_id": 142,
+        "ha_object_kind": "device",
+        "ha_object_id": "abc",
+    }
+    line = build_source_links(
+        payload,
+        bookstack_base_url="http://bookstack.lokal",
+        homeassistant_base_url="http://hass.local",
+    )
+    assert " · " in line
+    assert "[BookStack]" in line
+    assert "[HA Gerät]" in line
+
+
+def test_source_links_skip_ha_when_object_id_missing() -> None:
+    payload = {"ha_object_kind": "device", "ha_object_id": None}
+    line = build_source_links(
+        payload,
+        bookstack_base_url="",
+        homeassistant_base_url="http://hass.local",
+    )
+    assert line is None
+
+
+def test_build_messages_appends_sources_line() -> None:
+    hit = _hit(
+        "Bewegungsmelder Gang",
+        "preview body",
+        page_id=142,
+        payload={"ha_object_kind": "device", "ha_object_id": "a1b2"},
+    )
+    msgs = build_messages(
+        system_prompt="SYS",
+        history=[],
+        hits=[hit],
+        query="frage",
+        bookstack_base_url="http://bookstack.lokal",
+        homeassistant_base_url="http://hass.local",
+    )
+    user_msg = msgs[-1]["content"]
+    assert "Sources: [BookStack](http://bookstack.lokal/link/142)" in user_msg
+    assert "[HA Gerät](http://hass.local/config/devices/device/a1b2)" in user_msg
+
+
+def test_build_messages_omits_sources_line_without_urls() -> None:
+    hit = _hit("doc", "preview", page_id=10)
+    msgs = build_messages(
+        system_prompt="SYS",
+        history=[],
+        hits=[hit],
+        query="frage",
+    )
+    user_msg = msgs[-1]["content"]
+    assert "Sources:" not in user_msg
 
 
 # --- FakeLLMClient ----------------------------------------------------------

@@ -250,4 +250,6 @@ def base_config(export_dir: Path) -> Config:
         max_turns=20,
         system_prompt="",
         conversations_db_path=export_dir.parent / "conversations.db",
+        bookstack_base_url="",
+        homeassistant_base_url="",
     )

@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from qdrant_client import QdrantClient
 
 from app import __version__
@@ -18,6 +20,8 @@ from app.index import Index
 from app.llm import LLMClient
 from app.pipeline import Pipeline
 from app.watcher import Watcher
+
+UI_DIR = Path(__file__).parent / "ui"
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -108,4 +112,10 @@ def create_app() -> FastAPI:
     )
     app.state.config = config
     app.include_router(router, prefix="/api")
+    if UI_DIR.is_dir():
+        app.mount(
+            "/",
+            StaticFiles(directory=UI_DIR, html=True),
+            name="ui",
+        )
     return app
