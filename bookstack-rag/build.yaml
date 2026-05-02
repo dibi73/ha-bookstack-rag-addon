@@ -1,6 +1,10 @@
 # Multi-arch base images consumed by home-assistant/builder.
 # Pinned to a known-good tag combination; bump intentionally.
+#
+# armv7 was supported in v0.1.x but dropped from v0.2.0 onwards: PyTorch
+# (transitive via sentence-transformers) ships no official armv7 wheels,
+# and self-compiling on alpine/musl is unreliable. Users on 32-bit Pi OS
+# need to switch to 64-bit (aarch64) — same hardware, different OS image.
 build_from:
   amd64: ghcr.io/home-assistant/amd64-base-python:3.12-alpine3.19
   aarch64: ghcr.io/home-assistant/aarch64-base-python:3.12-alpine3.19
-  armv7: ghcr.io/home-assistant/armv7-base-python:3.12-alpine3.19

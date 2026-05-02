@@ -91,12 +91,13 @@ Reachable through the HA Ingress panel.
 
 | Setup | Verdict |
 |---|---|
-| Raspberry Pi 4 (4 GB) | ✅ embedding works (slow); LLM should be remote |
+| Raspberry Pi 4 (4 GB, **64-bit OS**) | ✅ embedding works (slow); LLM should be remote |
 | Synology / x86 NAS | ✅ embedding fine; small local LLM possible |
 | Local PC with GPU | ✅ run Ollama there, point the add-on at it |
-| Pi 4 (2 GB) or Pi 3 | ❌ embedding model alone exceeds available RAM |
+| Pi 4 (32-bit OS) or Pi 3 | ❌ since v0.2.0: armv7 is no longer supported (no PyTorch wheels) |
+| Pi 4 (2 GB) | ⚠️ marginal — embedding model alone needs ~500 MB |
 
-Minimum RAM for the add-on itself (without LLM): ~1 GB.
+Minimum RAM for the add-on itself (without LLM): ~1 GB. Supported architectures: **amd64**, **aarch64** (so Pi 4/5 must run a 64-bit OS).
 
 ## Contributing
 
