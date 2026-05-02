@@ -9,6 +9,10 @@ from pathlib import Path
 
 DEFAULT_OPTIONS_PATH = Path("/data/options.json")
 DEFAULT_EXPORT_PATH = Path("/config/bookstack_export")
+DEFAULT_EMBEDDING_MODEL = "nomic-ai/nomic-embed-text-v1.5"
+DEFAULT_TOP_K = 5
+QDRANT_URL = "http://localhost:6333"
+QDRANT_COLLECTION = "bookstack_smart_home"
 ADDON_OPTIONS_ENV = "ADDON_OPTIONS"
 
 
@@ -17,6 +21,10 @@ class Config:
     """Resolved add-on configuration."""
 
     bookstack_export_path: Path
+    embedding_model: str
+    top_k: int
+    qdrant_url: str
+    qdrant_collection: str
 
 
 def _resolve_options_path(options_path: Path | None) -> Path:
@@ -35,5 +43,17 @@ def load_config(options_path: Path | None = None) -> Config:
     data: dict[str, object] = {}
     if path.exists():
         data = json.loads(path.read_text(encoding="utf-8"))
+
     raw_export_path = data.get("bookstack_export_path") or str(DEFAULT_EXPORT_PATH)
-    return Config(bookstack_export_path=Path(str(raw_export_path)))
+    raw_embedding_model = data.get("embedding_model") or DEFAULT_EMBEDDING_MODEL
+    raw_top_k = data.get("top_k") or DEFAULT_TOP_K
+    raw_qdrant_url = data.get("qdrant_url") or QDRANT_URL
+    raw_qdrant_collection = data.get("qdrant_collection") or QDRANT_COLLECTION
+
+    return Config(
+        bookstack_export_path=Path(str(raw_export_path)),
+        embedding_model=str(raw_embedding_model),
+        top_k=int(raw_top_k),  # type: ignore[arg-type]
+        qdrant_url=str(raw_qdrant_url),
+        qdrant_collection=str(raw_qdrant_collection),
+    )

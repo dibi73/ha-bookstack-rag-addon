@@ -1,2 +1,10 @@
 fastapi==0.136.1
 uvicorn==0.46.0
+sentence-transformers==5.4.1
+qdrant-client==1.17.1
+watchdog==6.0.0
+python-frontmatter==1.1.0
+# Required by nomic-embed-text-v1.5's modeling code when loaded via
+# trust_remote_code=True. sentence-transformers does not pull this in
+# transitively, but the model fails to load without it.
+einops==0.8.1

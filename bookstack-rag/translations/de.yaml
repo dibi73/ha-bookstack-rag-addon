@@ -5,6 +5,18 @@ configuration:
       Pfad im Container, unter dem der von der ha-bookstack-sync-Integration
       erzeugte Markdown-Export liegt. Der Default passt zum Default-Export-Pfad
       der Integration.
+  embedding_model:
+    name: Embedding-Modell
+    description: >-
+      sentence-transformers-Modell für Embeddings (Markdown-Indexierung und
+      User-Fragen). Default `nomic-ai/nomic-embed-text-v1.5` (768 Dimensionen,
+      MIT-Lizenz, ~500 MB) ist im Container vorinstalliert. Ein anderes Modell
+      löst beim ersten Start einen einmaligen Download aus.
+  top_k:
+    name: Top-K
+    description: >-
+      Default-Anzahl der Treffer die /api/query zurückgibt, wenn der Aufruf
+      kein eigenes top_k mitliefert. Bereich 1-50.
 
 network:
   8000/tcp: Web-UI-Port (nur relevant wenn Ingress deaktiviert ist — Default lässt den Zugriff ausschließlich über Ingress laufen)

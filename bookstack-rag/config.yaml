@@ -1,12 +1,11 @@
 name: BookStack RAG
-version: "0.1.1"
+version: "0.2.0"
 slug: bookstack_rag
 description: Local RAG over BookStack-exported Home Assistant documentation
 url: "https://github.com/dibi73/ha-bookstack-rag-addon"
 arch:
   - amd64
   - aarch64
-  - armv7
 startup: services
 boot: auto
 init: false
@@ -21,5 +20,9 @@ map:
   - config:ro
 options:
   bookstack_export_path: /config/bookstack_export
+  embedding_model: nomic-ai/nomic-embed-text-v1.5
+  top_k: 5
 schema:
   bookstack_export_path: str
+  embedding_model: str?
+  top_k: "int(1,50)?"
