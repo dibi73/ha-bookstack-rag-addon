@@ -11,6 +11,9 @@ DEFAULT_OPTIONS_PATH = Path("/data/options.json")
 DEFAULT_EXPORT_PATH = Path("/config/bookstack_export")
 DEFAULT_EMBEDDING_MODEL = "nomic-ai/nomic-embed-text-v1.5"
 DEFAULT_TOP_K = 5
+DEFAULT_MAX_TURNS = 20
+DEFAULT_LLM_TIMEOUT = 60
+DEFAULT_CONVERSATIONS_DB = Path("/data/conversations.db")
 QDRANT_URL = "http://localhost:6333"
 QDRANT_COLLECTION = "bookstack_smart_home"
 ADDON_OPTIONS_ENV = "ADDON_OPTIONS"
@@ -25,6 +28,13 @@ class Config:
     top_k: int
     qdrant_url: str
     qdrant_collection: str
+    llm_base_url: str
+    llm_api_key: str
+    llm_model: str
+    llm_timeout: int
+    max_turns: int
+    system_prompt: str
+    conversations_db_path: Path
 
 
 def _resolve_options_path(options_path: Path | None) -> Path:
@@ -49,6 +59,11 @@ def load_config(options_path: Path | None = None) -> Config:
     raw_top_k = data.get("top_k") or DEFAULT_TOP_K
     raw_qdrant_url = data.get("qdrant_url") or QDRANT_URL
     raw_qdrant_collection = data.get("qdrant_collection") or QDRANT_COLLECTION
+    raw_max_turns = data.get("max_turns") or DEFAULT_MAX_TURNS
+    raw_llm_timeout = data.get("llm_timeout") or DEFAULT_LLM_TIMEOUT
+    raw_conversations_db = data.get("conversations_db_path") or str(
+        DEFAULT_CONVERSATIONS_DB
+    )
 
     return Config(
         bookstack_export_path=Path(str(raw_export_path)),
@@ -56,4 +71,11 @@ def load_config(options_path: Path | None = None) -> Config:
         top_k=int(raw_top_k),  # type: ignore[arg-type]
         qdrant_url=str(raw_qdrant_url),
         qdrant_collection=str(raw_qdrant_collection),
+        llm_base_url=str(data.get("llm_base_url") or ""),
+        llm_api_key=str(data.get("llm_api_key") or ""),
+        llm_model=str(data.get("llm_model") or ""),
+        llm_timeout=int(raw_llm_timeout),  # type: ignore[arg-type]
+        max_turns=int(raw_max_turns),  # type: ignore[arg-type]
+        system_prompt=str(data.get("system_prompt") or ""),
+        conversations_db_path=Path(str(raw_conversations_db)),
     )

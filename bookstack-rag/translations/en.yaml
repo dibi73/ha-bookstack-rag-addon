@@ -17,6 +17,42 @@ configuration:
     description: >-
       Default number of matching documents returned by /api/query when the
       caller does not specify their own top_k. Range 1-50.
+  llm_base_url:
+    name: LLM base URL
+    description: >-
+      OpenAI-compatible chat-completions endpoint, e.g.
+      http://192.168.1.100:11434/v1 (Ollama on a LAN host),
+      https://api.openai.com/v1, https://api.anthropic.com/v1, or your own
+      vLLM/LM-Studio host. Leave empty to keep the add-on in retrieval-only
+      mode (no LLM calls).
+  llm_api_key:
+    name: LLM API key
+    description: >-
+      Bearer token sent as Authorization header. Local Ollama installs
+      typically leave this empty. Stored as a password field (HA hides it
+      in the UI; never written to logs).
+  llm_model:
+    name: LLM model name
+    description: >-
+      Model identifier as the endpoint expects it (e.g. qwen2.5:7b for Ollama,
+      gpt-4o-mini for OpenAI, claude-haiku-4-5 for Anthropic, gemini-2.0-flash
+      for Gemini). Empty means LLM stays disabled.
+  llm_timeout:
+    name: LLM request timeout (seconds)
+    description: >-
+      Hard cap on each chat-completions request. Range 5-600. Default 60.
+  max_turns:
+    name: Conversation max turns
+    description: >-
+      Truncate conversation history to the last N user/assistant pairs before
+      sending to the LLM. Default 20. Lower the value if the LLM context
+      window is small or token cost is a concern.
+  system_prompt:
+    name: System prompt override
+    description: >-
+      Optional override for the built-in system prompt. Empty means the
+      add-on uses its bilingual default (German + English, instructed to
+      answer strictly from the provided documentation).
 
 network:
   8000/tcp: Web UI port (only used when ingress is disabled — default keeps it through ingress only)
