@@ -53,6 +53,22 @@ configuration:
       Optional override for the built-in system prompt. Empty means the
       add-on uses its bilingual default (German + English, instructed to
       answer strictly from the provided documentation).
+  bookstack_base_url:
+    name: BookStack base URL
+    description: >-
+      Public URL of your BookStack instance, e.g. http://bookstack.lokal:6875.
+      Used to build "Sources: [BookStack](...)" links in the LLM prompt and
+      in the web UI's source list. The link points at BookStack's permalink
+      endpoint (`/link/<page-id>`), so it survives page-slug renames.
+      Leave empty to skip BookStack source links.
+  homeassistant_base_url:
+    name: Home Assistant base URL
+    description: >-
+      Public URL of your Home Assistant instance, e.g.
+      http://homeassistant.local:8123. Used to build deep-links to the HA
+      frontend (Devices, Areas, Automations, …) so the LLM and the web UI
+      can offer "edit the actual device" jumps. Leave empty to skip HA
+      deep-links.
 
 network:
   8000/tcp: Web UI port (only used when ingress is disabled — default keeps it through ingress only)

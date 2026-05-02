@@ -66,7 +66,8 @@ RUN mkdir -p "$HF_HOME" \
 # qdrant binary from the upstream image — pinned to match qdrant-client.
 COPY --from=qdrant_source /qdrant/qdrant /usr/local/bin/qdrant
 
-# App code and s6-overlay service definitions.
+# App code (incl. the static UI bundle under app/ui/) and s6-overlay
+# service definitions.
 COPY app/ /app/app/
 COPY rootfs/ /
 RUN chmod a+x /etc/s6-overlay/s6-rc.d/api/run \
@@ -79,6 +80,6 @@ LABEL \
     io.hass.name="BookStack RAG" \
     io.hass.description="Local RAG over BookStack-exported Home Assistant documentation" \
     io.hass.type="addon" \
-    io.hass.version="0.3.0" \
+    io.hass.version="0.4.0" \
     io.hass.arch="amd64|aarch64" \
     maintainer="dibi73 <https://github.com/dibi73>"

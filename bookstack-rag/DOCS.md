@@ -27,9 +27,11 @@ The full pipeline:
 
 ## Current stage
 
-**Stage 2 — v0.3.0.** Retrieval, LLM synthesis, multi-turn chat, and
-SSE streaming all wired up. A Web UI lands in v0.4.0; until then the
-endpoints are reachable via the HA Ingress panel and any HTTP client.
+**Stage 3 — v0.4.0.** Built-in web UI is now mounted at the add-on's
+ingress panel root: open *Settings → Add-ons → BookStack RAG →
+Open Web UI* and you land in a full chat interface (sidebar with chat
+history, streaming Markdown answers, mobile-responsive). REST endpoints
+remain available for programmatic access.
 
 > 64-bit OS required since v0.2.0. PyTorch (transitive via
 > `sentence-transformers`) ships no armv7 wheels.
@@ -85,6 +87,28 @@ endpoints are reachable via the HA Ingress panel and any HTTP client.
 
 - **Type**: `str?` · **Default**: empty (built-in bilingual prompt is used)
 - Override for the system message.
+
+### Source-link options (off by default)
+
+#### `bookstack_base_url`
+
+- **Type**: `url?` · **Default**: empty
+- Public URL of your BookStack instance. When set together with
+  `bookstack_page_id` in the document's frontmatter, each context
+  block in the LLM prompt gets a `[BookStack](.../link/<page-id>)`
+  citation the LLM can cite. The link uses BookStack's permalink
+  endpoint, so it survives page-slug renames.
+
+#### `homeassistant_base_url`
+
+- **Type**: `url?` · **Default**: empty
+- Public URL of your Home Assistant instance. Combined with
+  `ha_object_kind` + `ha_object_id` from the frontmatter, each
+  context block gets an `[HA Gerät](.../config/devices/device/<id>)`
+  (or the matching automation/area/scene/script/integration/entity/
+  helper) citation. The LLM is instructed to cite these links
+  sparingly so the user can jump to the device-edit page directly
+  from the answer.
 
 ## LLM endpoint examples
 

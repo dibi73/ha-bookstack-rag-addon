@@ -35,6 +35,8 @@ class Config:
     max_turns: int
     system_prompt: str
     conversations_db_path: Path
+    bookstack_base_url: str
+    homeassistant_base_url: str
 
 
 def _resolve_options_path(options_path: Path | None) -> Path:
@@ -78,4 +80,6 @@ def load_config(options_path: Path | None = None) -> Config:
         max_turns=int(raw_max_turns),  # type: ignore[arg-type]
         system_prompt=str(data.get("system_prompt") or ""),
         conversations_db_path=Path(str(raw_conversations_db)),
+        bookstack_base_url=str(data.get("bookstack_base_url") or ""),
+        homeassistant_base_url=str(data.get("homeassistant_base_url") or ""),
     )

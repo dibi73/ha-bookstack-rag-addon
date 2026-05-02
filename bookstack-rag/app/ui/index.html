@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>BookStack RAG</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="layout">
+
+    <aside id="sidebar" class="sidebar" aria-label="Chat-Verlauf">
+      <div class="sidebar-header">
+        <button id="btn-new-chat" class="btn btn-primary" type="button">+ Neuer Chat</button>
+        <button id="btn-close-sidebar" class="btn btn-icon sidebar-only-mobile" type="button" aria-label="Sidebar schließen">×</button>
+      </div>
+      <ul id="conversation-list" class="conversation-list" role="list"></ul>
+      <div class="sidebar-footer">
+        <span id="status-llm" class="status-pill" aria-live="polite">…</span>
+        <span id="status-index" class="status-pill" aria-live="polite">…</span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="main-header">
+        <button id="btn-toggle-sidebar" class="btn btn-icon main-only-mobile" type="button" aria-label="Sidebar öffnen">☰</button>
+        <h1 class="main-title">BookStack RAG</h1>
+        <span id="active-conversation" class="active-id" aria-live="polite"></span>
+      </header>
+
+      <section id="conversation" class="conversation" aria-live="polite" aria-label="Chat-Verlauf">
+        <div class="empty-state" id="empty-state">
+          <p>Stelle eine Frage zu deinem Smart Home — die Antwort kommt direkt aus deiner BookStack-Doku.</p>
+          <p class="empty-state-hint">Beispiel: <em>„Was macht der Bewegungsmelder am Gang?"</em></p>
+        </div>
+      </section>
+
+      <form id="composer" class="composer" autocomplete="off">
+        <textarea
+          id="input"
+          name="input"
+          placeholder="Frage eingeben — Enter zum Senden, Shift+Enter für Zeilenumbruch"
+          rows="1"
+          required
+        ></textarea>
+        <button id="btn-send" class="btn btn-primary" type="submit">Senden</button>
+      </form>
+    </main>
+
+  </div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

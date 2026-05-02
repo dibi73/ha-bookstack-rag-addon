@@ -53,6 +53,22 @@ configuration:
       Optionaler Override des eingebauten System-Prompts. Leer heißt das
       Add-on nutzt seinen zweisprachigen Default (Deutsch + Englisch, weist
       den LLM an strikt aus der bereitgestellten Doku zu antworten).
+  bookstack_base_url:
+    name: BookStack-Base-URL
+    description: >-
+      Öffentliche URL deiner BookStack-Instanz, z.B. http://bookstack.lokal:6875.
+      Wird genutzt um „Sources: [BookStack](...)"-Links im LLM-Prompt und in
+      der Web-UI-Quellenliste zu bauen. Der Link nutzt BookStacks
+      Permalink-Endpoint (`/link/<page-id>`) und überlebt Slug-Renames.
+      Leer lassen heißt keine BookStack-Quellen-Links.
+  homeassistant_base_url:
+    name: Home-Assistant-Base-URL
+    description: >-
+      Öffentliche URL deiner Home-Assistant-Instanz, z.B.
+      http://homeassistant.local:8123. Wird genutzt um Deep-Links zur HA-UI
+      (Geräte, Bereiche, Automationen, …) zu bauen, damit LLM und Web-UI
+      „direkt zum Gerät bearbeiten" anbieten können. Leer lassen heißt
+      keine HA-Deep-Links.
 
 network:
   8000/tcp: Web-UI-Port (nur relevant wenn Ingress deaktiviert ist — Default lässt den Zugriff ausschließlich über Ingress laufen)

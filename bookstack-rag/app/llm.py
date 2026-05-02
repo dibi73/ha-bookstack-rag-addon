@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
@@ -31,20 +31,98 @@ DEFAULT_SYSTEM_PROMPT = (
     "Answer in the language of the user's question (German or English).\n"
     "If you cannot find an answer in the documentation, say so honestly — "
     "never invent device details.\n"
-    "Keep answers clear and accessible for non-technical household members."
+    "Keep answers clear and accessible for non-technical household members.\n"
+    "When a context document carries a 'Sources: ...' line, you may cite "
+    "those Markdown links in your answer so the user can jump to the "
+    "BookStack page (for context / notes) or the Home Assistant UI (to "
+    "edit the actual device, automation, or area). Use them sparingly — "
+    "one or two source links per answer is usually enough."
 )
+
+
+# Map ha_object_kind (from the sister-integration's frontmatter) to the
+# Home Assistant frontend deep-link path. Mirrors the table in the
+# Architektur doc §3 (HA-Frontend-Deep-Links, ab v0.14.5 of ha-bookstack-sync).
+HA_DEEP_LINK_PATTERNS: dict[str, str] = {
+    "device": "/config/devices/device/{id}",
+    "area": "/config/areas/area/{id}",
+    "automation": "/config/automation/edit/{id}",
+    "script": "/config/script/edit/{id}",
+    "scene": "/config/scene/edit/{id}",
+    "integration": "/config/integrations/integration/{id}",
+    "entity": "/developer-tools/state?entity_id={id}",
+    "helper": "/config/helpers",
+}
+
+# Friendly labels for the source-link footer. "helper" stays generic
+# because Home Assistant's helper page is a collection, not per-id.
+HA_DEEP_LINK_LABELS: dict[str, str] = {
+    "device": "HA Gerät",
+    "area": "HA Bereich",
+    "automation": "HA Automation",
+    "script": "HA Skript",
+    "scene": "HA Szene",
+    "integration": "HA Integration",
+    "entity": "HA Entity",
+    "helper": "HA Helfer",
+}
+
+
+def build_source_links(
+    payload: dict[str, Any],
+    *,
+    bookstack_base_url: str,
+    homeassistant_base_url: str,
+) -> str | None:
+    """Return a 'Sources: [BookStack](...) · [HA Device](...)' Markdown line.
+
+    Either link is omitted when its base URL is not configured or when the
+    matching frontmatter field is missing. Returns ``None`` when neither
+    link can be built.
+    """
+    parts: list[str] = []
+
+    bookstack_page_id = payload.get("bookstack_page_id")
+    if bookstack_base_url and bookstack_page_id is not None:
+        bs_url = f"{bookstack_base_url.rstrip('/')}/link/{bookstack_page_id}"
+        parts.append(f"[BookStack]({bs_url})")
+
+    ha_object_kind = payload.get("ha_object_kind")
+    ha_object_id = payload.get("ha_object_id")
+    if (
+        homeassistant_base_url
+        and isinstance(ha_object_kind, str)
+        and ha_object_kind in HA_DEEP_LINK_PATTERNS
+    ):
+        pattern = HA_DEEP_LINK_PATTERNS[ha_object_kind]
+        ha_url: str | None = None
+        if "{id}" not in pattern:
+            ha_url = f"{homeassistant_base_url.rstrip('/')}{pattern}"
+        elif ha_object_id:
+            ha_url = (
+                f"{homeassistant_base_url.rstrip('/')}{pattern.format(id=ha_object_id)}"
+            )
+        if ha_url is not None:
+            label = HA_DEEP_LINK_LABELS.get(ha_object_kind, ha_object_kind)
+            parts.append(f"[{label}]({ha_url})")
+
+    if not parts:
+        return None
+    return " · ".join(parts)
 
 
 class LLMNotConfiguredError(RuntimeError):
     """Raised when an LLM call is attempted but the endpoint is not configured."""
 
 
-def build_messages(
+def build_messages(  # noqa: PLR0913
     *,
     system_prompt: str,
     history: list[dict[str, str]],
     hits: list[SearchHit],
     query: str,
+    bookstack_base_url: str = "",
+    homeassistant_base_url: str = "",
 ) -> list[dict[str, str]]:
     """Assemble the OpenAI-format messages list for one chat completion.
 
@@ -52,12 +130,28 @@ def build_messages(
     cannot confuse retrieved content with user instructions — that is the
     prompt-injection-defence pattern from the project's security spec
     (Anforderungsdokument §6.1).
+
+    When ``bookstack_base_url`` / ``homeassistant_base_url`` are configured
+    and the hit's frontmatter carries the matching id fields, each
+    ``<doc>`` block gets a trailing ``Sources: ...`` line with Markdown
+    links the LLM can cite verbatim.
     """
     if hits:
-        context_blocks = "\n\n".join(
-            f'<doc index="{i + 1}" title="{hit.title}">\n{hit.content_preview}\n</doc>'
-            for i, hit in enumerate(hits)
-        )
+        blocks: list[str] = []
+        for i, hit in enumerate(hits):
+            block = (
+                f'<doc index="{i + 1}" title="{hit.title}">\n{hit.content_preview}\n'
+            )
+            sources = build_source_links(
+                hit.payload,
+                bookstack_base_url=bookstack_base_url,
+                homeassistant_base_url=homeassistant_base_url,
+            )
+            if sources:
+                block += f"Sources: {sources}\n"
+            block += "</doc>"
+            blocks.append(block)
+        context_blocks = "\n\n".join(blocks)
         user_with_context = (
             f"Context documents:\n\n{context_blocks}\n\nQuestion: {query}"
         )
