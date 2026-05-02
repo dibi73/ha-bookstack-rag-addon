@@ -11,17 +11,28 @@ Familie.
 
 ## Status
 
-**Stage 0 — v0.1.0** (Skelett-Release).
+**Stage 1 — v0.2.0**.
 
-Dieses Release enthält:
-- Die HACS-Add-on-Repository-Struktur.
-- Einen minimalen FastAPI-Server, der nach Installation meldet, wie viele
-  `.md`-Dateien er unter dem konfigurierten BookStack-Export-Pfad sieht.
-- Das CI-Gerüst (ruff-Lint, pytest, Container-Build) für alle folgenden
-  Stages.
+Dieses Release indexiert den BookStack-Export und beantwortet natürliche-
+Sprache-Queries mit den passendsten Dokumenten. LLM-Integration (Stage 2)
+und Web-UI (Stage 3) folgen.
 
-Indexierung, Embedding, RAG und Web-UI kommen ab v0.2.0 — siehe
-[Roadmap](#roadmap).
+Was ausgeliefert wird:
+- File-Watcher auf `<config>/bookstack_export/` mit idempotentem
+  Hash-basiertem Indexing, Soft-Delete bei Datei-Löschung.
+- Lokales Embedding via `nomic-ai/nomic-embed-text-v1.5` (CPU-only,
+  vorinstalliert im Image).
+- Qdrant als Sidecar-Container (im selben Add-on-Container,
+  Persistenz unter `/data/qdrant/`).
+- `POST /api/query {text, top_k?}` liefert sortierte Treffer mit
+  `bookstack_page_id` zur Rückverlinkung in BookStack.
+- `POST /api/reindex` löst einen manuellen Reconcile-Sweep aus.
+
+> ⚠️ **v0.2.0 droppt armv7.** Stage 1 zieht PyTorch transitiv mit;
+> PyTorch hat keine armv7-Wheels. Pi-4-Besitzer mit **32-Bit-OS**
+> müssen auf 64-Bit umsteigen — gleiche Hardware, anderes
+> OS-Image. amd64 (x86-NAS, Homelab) und aarch64 (Pi 4 64-Bit,
+> neuere ARM-NAS) bleiben voll unterstützt.
 
 ## Wie die Teile zusammenspielen
 
@@ -48,27 +59,32 @@ Web-UI über Home-Assistant-Ingress
    Default-Konfiguration der Integration).
 5. **Starten**. Der Ingress-Panel-Link erscheint in der HA-Sidebar.
 
-## Konfiguration (Stage 0)
+## Konfiguration
 
 | Option | Default | Beschreibung |
 |---|---|---|
-| `bookstack_export_path` | `/config/bookstack_export` | Pfad im Container, wo der Markdown-Export liegt. Default passt, wenn `ha-bookstack-sync` mit seinem Default-Export-Pfad genutzt wird. |
+| `bookstack_export_path` | `/config/bookstack_export` | Pfad im Container, wo der Markdown-Export liegt. |
+| `embedding_model` | `nomic-ai/nomic-embed-text-v1.5` | sentence-transformers-Modell für Embeddings. Default ist im Image vorinstalliert; ein anderes Modell löst beim ersten Start einen einmaligen Download aus. |
+| `top_k` | `5` | Default-Anzahl der `/api/query`-Treffer wenn kein explizites `top_k` mitgegeben wird. |
 
-Weitere Optionen (LLM-Endpoint, Modell-Name, top-k, …) folgen mit den
-nächsten Stages. Dokumentation in `bookstack-rag/DOCS.md`.
+LLM-Endpoint-Optionen (`llm_base_url`, `llm_api_key`, `llm_model`)
+kommen in v0.3.0. Bis dahin liefert das Add-on passende Dokumente
+zurück, aber keine synthetisierte Antwort.
 
-## Endpoints (Stage 0)
+## Endpoints
 
-| Methode | Pfad | Antwort |
+| Methode | Pfad | Beschreibung |
 |---|---|---|
-| `GET` | `/api/status` | `{"status": "ok", "export_path": ..., "markdown_files": N}` |
+| `GET` | `/api/status` | `{status, export_path, markdown_files, indexed}` — Readiness + Counts. |
+| `POST` | `/api/query` | Body: `{text: "...", top_k?: 1-50}`. Antwort: `{query, top_k, hits: [{doc_id, score, title, content_preview, bookstack_page_id}]}`. |
+| `POST` | `/api/reindex` | Voller Reconcile-Sweep. Antwort: `{indexed, unchanged, skipped, failed, total}`. |
 
-Erreichbar über das HA-Ingress-Panel.
+Alle Endpoints sind über das HA-Ingress-Panel erreichbar.
 
 ## Roadmap
 
 - [x] **Stage 0 (v0.1.0)** — Skelett-Add-on, CI, Status-Endpoint.
-- [ ] **Stage 1 (v0.2.0)** — File-Watcher, Embedding (nomic-embed-text),
+- [x] **Stage 1 (v0.2.0)** — File-Watcher, Embedding (nomic-embed-text),
   Qdrant-Index, `/api/query` mit Top-K-Dokumenten.
 - [ ] **Stage 2 (v0.3.0)** — LLM-Integration (OpenAI-kompatibler Endpoint
   konfigurierbar, Streaming-Antworten).

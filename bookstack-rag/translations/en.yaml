@@ -5,6 +5,18 @@ configuration:
       Path inside the container where the Markdown export produced by the
       ha-bookstack-sync integration lives. The default matches the
       integration's default export path.
+  embedding_model:
+    name: Embedding model
+    description: >-
+      sentence-transformers model used to embed Markdown content and user
+      queries. Default `nomic-ai/nomic-embed-text-v1.5` (768 dimensions, MIT
+      license, ~500 MB) is pre-downloaded into the image. Pointing this at a
+      different model triggers a one-time download on first start.
+  top_k:
+    name: Top-K
+    description: >-
+      Default number of matching documents returned by /api/query when the
+      caller does not specify their own top_k. Range 1-50.
 
 network:
   8000/tcp: Web UI port (only used when ingress is disabled — default keeps it through ingress only)

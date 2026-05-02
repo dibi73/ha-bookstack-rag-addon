@@ -2,9 +2,13 @@
 # Pinned to a known-good tag combination; bump intentionally.
 #
 # armv7 was supported in v0.1.x but dropped from v0.2.0 onwards: PyTorch
-# (transitive via sentence-transformers) ships no official armv7 wheels,
-# and self-compiling on alpine/musl is unreliable. Users on 32-bit Pi OS
-# need to switch to 64-bit (aarch64) — same hardware, different OS image.
+# (transitive via sentence-transformers) ships no official armv7 wheels.
+#
+# Stage 1 also moves off the alpine variant we used in v0.1.x — PyTorch
+# has no musllinux (alpine/musl) wheels either, only manylinux (glibc).
+# The HA-base-python:3.12 tag without an alpine/debian suffix points at
+# the debian variant maintained by Home Assistant; that gives us glibc,
+# the standard wheel ecosystem, plus bashio + s6-overlay still pre-baked.
 build_from:
-  amd64: ghcr.io/home-assistant/amd64-base-python:3.12-alpine3.19
-  aarch64: ghcr.io/home-assistant/aarch64-base-python:3.12-alpine3.19
+  amd64: ghcr.io/home-assistant/amd64-base-python:3.12
+  aarch64: ghcr.io/home-assistant/aarch64-base-python:3.12

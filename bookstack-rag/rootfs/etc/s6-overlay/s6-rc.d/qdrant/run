@@ -1,0 +1,19 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Start the in-container qdrant sidecar
+# ==============================================================================
+
+mkdir -p /data/qdrant/storage /data/qdrant/snapshots
+
+bashio::log.info "Starting qdrant on localhost:6333 (storage at /data/qdrant)..."
+
+# Override storage paths and bind only to localhost — the API service in the
+# same container is the only intended consumer.
+export QDRANT__STORAGE__STORAGE_PATH=/data/qdrant/storage
+export QDRANT__STORAGE__SNAPSHOTS_PATH=/data/qdrant/snapshots
+export QDRANT__SERVICE__HOST=127.0.0.1
+export QDRANT__SERVICE__HTTP_PORT=6333
+export QDRANT__SERVICE__GRPC_PORT=6334
+export QDRANT__TELEMETRY_DISABLED=true
+
+exec /usr/local/bin/qdrant

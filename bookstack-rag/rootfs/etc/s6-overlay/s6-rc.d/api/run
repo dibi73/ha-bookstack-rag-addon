@@ -1,9 +1,17 @@
 #!/usr/bin/with-contenv bashio
 # ==============================================================================
-# Start the BookStack RAG FastAPI server
+# Start the BookStack RAG FastAPI server, after waiting for the qdrant
+# sidecar to accept connections on localhost:6333.
 # ==============================================================================
 
-bashio::log.info "Starting BookStack RAG API on port 8000..."
+bashio::log.info "Waiting for qdrant readiness on localhost:6333..."
+for attempt in $(seq 1 60); do
+    if curl -sfm 1 http://localhost:6333/readyz >/dev/null 2>&1; then
+        bashio::log.info "qdrant ready after ${attempt}s — starting API"
+        break
+    fi
+    sleep 1
+done
 
 cd /app
 
