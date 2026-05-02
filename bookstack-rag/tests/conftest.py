@@ -1,10 +1,11 @@
 """Shared pytest fixtures for the BookStack RAG add-on test suite.
 
 Tests deliberately bypass the production FastAPI lifespan — that one connects
-to a live Qdrant sidecar and downloads a 500 MB embedding model. Instead, we
-build the same dependency graph by hand using a deterministic
-:class:`FakeEmbedder` and Qdrant's ``:memory:`` mode, then attach them to the
-FastAPI ``app.state`` exactly as the production lifespan would.
+to a live Qdrant sidecar, downloads a 500 MB embedding model, and opens a
+real HTTP client to the configured LLM endpoint. We build the same dependency
+graph by hand using a deterministic :class:`FakeEmbedder`, Qdrant's
+``:memory:`` mode, a SQLite ``ConversationStore`` on a tmp_path file, and
+either no LLM or a :class:`FakeLLMClient`.
 """
 
 from __future__ import annotations
@@ -16,8 +17,10 @@ import pytest
 from app import __version__
 from app.api import router
 from app.config import Config, load_config
+from app.conversations import ConversationStore
 from app.embedder import FakeEmbedder
 from app.index import Index
+from app.llm import FakeLLMClient
 from app.pipeline import Pipeline
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -68,6 +71,24 @@ def pipeline(
 
 
 @pytest.fixture
+def fake_llm() -> FakeLLMClient:
+    """Stub LLM that returns a single canned reply."""
+    return FakeLLMClient(canned_response="[fake answer]")
+
+
+@pytest.fixture
+def fake_llm_streaming() -> FakeLLMClient:
+    """Stub LLM that yields a small sequence of streaming deltas."""
+    return FakeLLMClient(deltas=["Hello", " ", "world"])
+
+
+@pytest.fixture
+def conversations_store(tmp_path: Path) -> ConversationStore:
+    """Per-test SQLite conversation store at a temporary path."""
+    return ConversationStore(db_path=tmp_path / "conversations.db")
+
+
+@pytest.fixture
 def options_file(export_dir: Path, tmp_path: Path) -> Path:
     options = tmp_path / "options.json"
     options.write_text(
@@ -77,33 +98,105 @@ def options_file(export_dir: Path, tmp_path: Path) -> Path:
     return options
 
 
-@pytest.fixture
-def test_app(
-    options_file: Path,
-    fake_embedder: FakeEmbedder,
-    index: Index,
-    pipeline: Pipeline,
-    monkeypatch: pytest.MonkeyPatch,
+def _build_app(  # noqa: PLR0913
+    *,
+    config: Config,
+    embedder: FakeEmbedder | None = None,
+    index: Index | None = None,
+    pipeline: Pipeline | None = None,
+    llm: FakeLLMClient | None = None,
+    conversations: ConversationStore | None = None,
 ) -> FastAPI:
-    """FastAPI app with prod-equivalent state, but no production lifespan."""
-    monkeypatch.setenv("ADDON_OPTIONS", str(options_file))
-    config = load_config()
-    app = FastAPI(
-        title="BookStack RAG",
-        description="test",
-        version=__version__,
-    )
+    app = FastAPI(title="BookStack RAG", description="test", version=__version__)
     app.state.config = config
-    app.state.embedder = fake_embedder
-    app.state.index = index
-    app.state.pipeline = pipeline
+    if embedder is not None:
+        app.state.embedder = embedder
+    if index is not None:
+        app.state.index = index
+    if pipeline is not None:
+        app.state.pipeline = pipeline
+    if llm is not None:
+        app.state.llm = llm
+    if conversations is not None:
+        app.state.conversations = conversations
     app.include_router(router, prefix="/api")
     return app
 
 
 @pytest.fixture
+def test_app(  # noqa: PLR0913
+    options_file: Path,
+    fake_embedder: FakeEmbedder,
+    index: Index,
+    pipeline: Pipeline,
+    fake_llm: FakeLLMClient,
+    conversations_store: ConversationStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> FastAPI:
+    """FastAPI app with a fully wired prod-equivalent state for happy-path tests."""
+    monkeypatch.setenv("ADDON_OPTIONS", str(options_file))
+    config = load_config()
+    return _build_app(
+        config=config,
+        embedder=fake_embedder,
+        index=index,
+        pipeline=pipeline,
+        llm=fake_llm,
+        conversations=conversations_store,
+    )
+
+
+@pytest.fixture
 def client(test_app: FastAPI) -> TestClient:
     return TestClient(test_app)
+
+
+@pytest.fixture
+def client_no_llm(  # noqa: PLR0913
+    options_file: Path,
+    fake_embedder: FakeEmbedder,
+    index: Index,
+    pipeline: Pipeline,
+    conversations_store: ConversationStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> TestClient:
+    """Client where index is ready but no LLM is configured (Stage-1 mode)."""
+    monkeypatch.setenv("ADDON_OPTIONS", str(options_file))
+    config = load_config()
+    no_llm = FakeLLMClient(is_configured=False)
+    app = _build_app(
+        config=config,
+        embedder=fake_embedder,
+        index=index,
+        pipeline=pipeline,
+        llm=no_llm,
+        conversations=conversations_store,
+    )
+    return TestClient(app)
+
+
+@pytest.fixture
+def client_streaming_llm(  # noqa: PLR0913
+    options_file: Path,
+    fake_embedder: FakeEmbedder,
+    index: Index,
+    pipeline: Pipeline,
+    fake_llm_streaming: FakeLLMClient,
+    conversations_store: ConversationStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> TestClient:
+    """Client with a streaming-capable FakeLLMClient — exercises the SSE path."""
+    monkeypatch.setenv("ADDON_OPTIONS", str(options_file))
+    config = load_config()
+    app = _build_app(
+        config=config,
+        embedder=fake_embedder,
+        index=index,
+        pipeline=pipeline,
+        llm=fake_llm_streaming,
+        conversations=conversations_store,
+    )
+    return TestClient(app)
 
 
 @pytest.fixture
@@ -114,9 +207,7 @@ def client_no_index(
     """Variant without embedder/index/pipeline — used to verify 503 fallback paths."""
     monkeypatch.setenv("ADDON_OPTIONS", str(options_file))
     config = load_config()
-    app = FastAPI()
-    app.state.config = config
-    app.include_router(router, prefix="/api")
+    app = _build_app(config=config)
     return TestClient(app)
 
 
@@ -152,4 +243,11 @@ def base_config(export_dir: Path) -> Config:
         top_k=5,
         qdrant_url="http://localhost:6333",
         qdrant_collection="test_collection",
+        llm_base_url="",
+        llm_api_key="",
+        llm_model="",
+        llm_timeout=60,
+        max_turns=20,
+        system_prompt="",
+        conversations_db_path=export_dir.parent / "conversations.db",
     )

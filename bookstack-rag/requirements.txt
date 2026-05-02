@@ -8,3 +8,7 @@ python-frontmatter==1.1.0
 # trust_remote_code=True. sentence-transformers does not pull this in
 # transitively, but the model fails to load without it.
 einops==0.8.1
+# Async HTTP client for the OpenAI-compatible LLM endpoint. Already
+# installed transitively by fastapi via starlette, but pinned here so
+# upgrades cannot silently break the streaming code path.
+httpx==0.28.1

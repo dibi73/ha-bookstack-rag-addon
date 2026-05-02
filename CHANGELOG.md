@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-02
+
+Stage 2 — the add-on now synthesises natural-language answers via a
+configurable OpenAI-compatible LLM endpoint. Multi-turn conversations
+are persisted in SQLite and the answer can stream over Server-Sent
+Events for live token rendering.
+
+### Added
+
+- `LLMClient` (and `FakeLLMClient` for tests) speaking the
+  `/v1/chat/completions` dialect supported by OpenAI, Anthropic
+  (their 2024 OpenAI-compatibility API), Google Gemini's OpenAI-compat
+  endpoint, Ollama, vLLM, LM Studio and most self-hosted servers.
+- `POST /api/query` extended:
+  - Accepts `conversation_id` to continue a prior chat.
+  - Accepts `stream: true` to receive Server-Sent Events instead of
+    a single JSON response. The event sequence is `event: hit` per
+    retrieval result, then `event: delta` per content chunk, then
+    `event: done` carrying the conversation id.
+  - Returns `{conversation_id, answer}` alongside the hits when an
+    LLM is configured. When no LLM is configured the endpoint stays
+    in v0.2.0 retrieval-only mode and returns just the hits — fully
+    backwards-compatible.
+- `ConversationStore` backed by SQLite at `/data/conversations.db`.
+  Schema is auto-created on first start; CASCADE delete on
+  conversations cleans up child messages.
+- New endpoints:
+  - `GET /api/conversations` — list summaries (id, title preview,
+    message count, timestamps), most-recently-updated first.
+  - `GET /api/conversations/{id}` — full message history.
+  - `DELETE /api/conversations/{id}` — hard-delete one conversation.
+- `GET /api/status` now also reports `llm_configured: true|false`
+  so the upcoming web UI can hide the LLM-only controls when no
+  endpoint is set.
+- Built-in bilingual (DE/EN) system prompt with prompt-injection
+  defence: retrieval hits are wrapped in `<doc>` marker tags so the
+  LLM cannot confuse retrieved content with user instructions
+  (Anforderungsdokument §6.1).
+- Conversation-history truncation: only the last ``max_turns``
+  user/assistant pairs reach the LLM, capping context-window growth
+  on long chats.
+- Six new add-on options: `llm_base_url`, `llm_api_key` (password
+  field), `llm_model`, `llm_timeout`, `max_turns`, `system_prompt`.
+  All optional; LLM stays disabled until `llm_base_url` and
+  `llm_model` are both set (HARD RULE §3.6 — opt-in for cost-/
+  privacy-relevant features).
+
+### Changed
+
+- `httpx` is now a runtime dependency (was test-only). Pinned to
+  0.28.1 so streaming behaviour cannot regress silently.
+
+### Notes
+
+- 76 tests (was 42 in v0.2.0) covering the new LLM client (via
+  httpx MockTransport, no real network calls), conversation store,
+  and the new query/conversation endpoints in all three modes
+  (retrieval-only, one-shot LLM, streaming SSE).
+- Pi 4 (64-bit) impact: each turn adds one SQLite write (sub-ms),
+  one embedding pass on the new question (~1 s, same as v0.2.0),
+  one LLM call (latency dominated by the remote endpoint). Memory
+  stays flat — only the active conversation is in RAM.
+
 ## [0.2.0] - 2026-05-02
 
 Stage 1 — the add-on now actually indexes the BookStack export and
@@ -127,7 +190,8 @@ Initial Stage 0 skeleton release.
   enter the dependency closure).
 - Indexing, embedding, RAG and the web UI all land in v0.2.0+.
 
-[Unreleased]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/dibi73/ha-bookstack-rag-addon/releases/tag/v0.1.0

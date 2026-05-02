@@ -11,28 +11,26 @@ Familie.
 
 ## Status
 
-**Stage 1 — v0.2.0**.
+**Stage 2 — v0.3.0**.
 
-Dieses Release indexiert den BookStack-Export und beantwortet natürliche-
-Sprache-Queries mit den passendsten Dokumenten. LLM-Integration (Stage 2)
-und Web-UI (Stage 3) folgen.
+Das Add-on synthetisiert jetzt Antworten in natürlicher Sprache über
+einen frei wählbaren OpenAI-kompatiblen LLM-Endpoint (Ollama, OpenAI,
+Anthropic, Gemini, self-hosted vLLM/LM Studio). Multi-Turn-Chats werden
+persistiert, Streaming-Antworten via SSE ermöglichen Live-Token-Anzeige
+in einer kommenden Web-UI.
 
 Was ausgeliefert wird:
-- File-Watcher auf `<config>/bookstack_export/` mit idempotentem
-  Hash-basiertem Indexing, Soft-Delete bei Datei-Löschung.
-- Lokales Embedding via `nomic-ai/nomic-embed-text-v1.5` (CPU-only,
-  vorinstalliert im Image).
-- Qdrant als Sidecar-Container (im selben Add-on-Container,
-  Persistenz unter `/data/qdrant/`).
-- `POST /api/query {text, top_k?}` liefert sortierte Treffer mit
-  `bookstack_page_id` zur Rückverlinkung in BookStack.
-- `POST /api/reindex` löst einen manuellen Reconcile-Sweep aus.
+- Alles aus v0.2.0 (File-Watcher, lokales Embedding, Qdrant-Sidecar,
+  `/api/reindex`).
+- `POST /api/query` erweitert um `conversation_id` (Multi-Turn) und
+  `stream: true` (SSE).
+- Conversation-Persistenz in SQLite unter `/data/conversations.db`.
+- Neue Endpoints: `GET/DELETE /api/conversations[/{id}]`.
+- LLM ist **per Default aus** — `llm_base_url` und `llm_model` setzen
+  zum Aktivieren. Ohne diese bleibt das Add-on im v0.2.0-Retrieval-only-Modus.
 
-> ⚠️ **v0.2.0 droppt armv7.** Stage 1 zieht PyTorch transitiv mit;
-> PyTorch hat keine armv7-Wheels. Pi-4-Besitzer mit **32-Bit-OS**
-> müssen auf 64-Bit umsteigen — gleiche Hardware, anderes
-> OS-Image. amd64 (x86-NAS, Homelab) und aarch64 (Pi 4 64-Bit,
-> neuere ARM-NAS) bleiben voll unterstützt.
+> 64-Bit-OS-Pflicht seit v0.2.0 (kein armv7 / 32-Bit-Pi-OS — PyTorch
+> hat keine armv7-Wheels).
 
 ## Wie die Teile zusammenspielen
 
@@ -61,23 +59,59 @@ Web-UI über Home-Assistant-Ingress
 
 ## Konfiguration
 
+### Indexierung
+
 | Option | Default | Beschreibung |
 |---|---|---|
 | `bookstack_export_path` | `/config/bookstack_export` | Pfad im Container, wo der Markdown-Export liegt. |
-| `embedding_model` | `nomic-ai/nomic-embed-text-v1.5` | sentence-transformers-Modell für Embeddings. Default ist im Image vorinstalliert; ein anderes Modell löst beim ersten Start einen einmaligen Download aus. |
-| `top_k` | `5` | Default-Anzahl der `/api/query`-Treffer wenn kein explizites `top_k` mitgegeben wird. |
+| `embedding_model` | `nomic-ai/nomic-embed-text-v1.5` | sentence-transformers-Modell. Default ist im Image vorinstalliert. |
+| `top_k` | `5` | Default-Anzahl der Retrieval-Treffer. |
 
-LLM-Endpoint-Optionen (`llm_base_url`, `llm_api_key`, `llm_model`)
-kommen in v0.3.0. Bis dahin liefert das Add-on passende Dokumente
-zurück, aber keine synthetisierte Antwort.
+### LLM (per Default aus)
+
+| Option | Beschreibung |
+|---|---|
+| `llm_base_url` | OpenAI-kompatibler Chat-Completions-Endpoint. Leer → LLM aus. |
+| `llm_api_key` | Bearer-Token. Als Password-Feld markiert. Lokales Ollama lässt das leer. |
+| `llm_model` | Modell-Identifier. Leer → LLM aus. |
+| `llm_timeout` | Timeout pro Request in Sekunden. Default 60. |
+| `max_turns` | Conversation-History-Truncation — letzte N User/Assistant-Paare. Default 20. |
+| `system_prompt` | Optionaler Override des eingebauten zweisprachigen System-Prompts. |
+
+#### Beispiel-Konfigurationen
+
+```yaml
+# Ollama im LAN (Empfehlung — lokal, privat, kostenlos)
+llm_base_url: http://192.168.1.100:11434/v1
+llm_api_key: ""
+llm_model: qwen2.5:7b
+
+# OpenAI
+llm_base_url: https://api.openai.com/v1
+llm_api_key: sk-...
+llm_model: gpt-4o-mini
+
+# Anthropic (OpenAI-Compat-Layer)
+llm_base_url: https://api.anthropic.com/v1
+llm_api_key: sk-ant-...
+llm_model: claude-haiku-4-5
+
+# Google Gemini (OpenAI-Compat-Endpoint)
+llm_base_url: https://generativelanguage.googleapis.com/v1beta/openai
+llm_api_key: AIza...
+llm_model: gemini-2.0-flash
+```
 
 ## Endpoints
 
 | Methode | Pfad | Beschreibung |
 |---|---|---|
-| `GET` | `/api/status` | `{status, export_path, markdown_files, indexed}` — Readiness + Counts. |
-| `POST` | `/api/query` | Body: `{text: "...", top_k?: 1-50}`. Antwort: `{query, top_k, hits: [{doc_id, score, title, content_preview, bookstack_page_id}]}`. |
-| `POST` | `/api/reindex` | Voller Reconcile-Sweep. Antwort: `{indexed, unchanged, skipped, failed, total}`. |
+| `GET` | `/api/status` | `{status, export_path, markdown_files, indexed, llm_configured}` |
+| `POST` | `/api/query` | Body: `{text, top_k?, conversation_id?, stream?}`. Antwort: JSON `{query, top_k, hits, conversation_id?, answer?}` oder SSE-Stream mit `hit` / `delta` / `done`-Events. |
+| `POST` | `/api/reindex` | Voller Reconcile-Sweep. |
+| `GET` | `/api/conversations` | Liste der jüngsten Chats mit Titel-Vorschau + Message-Count. |
+| `GET` | `/api/conversations/{id}` | Vollständige Message-History eines Chats. |
+| `DELETE` | `/api/conversations/{id}` | Hard-Delete eines Chats. |
 
 Alle Endpoints sind über das HA-Ingress-Panel erreichbar.
 
@@ -86,8 +120,8 @@ Alle Endpoints sind über das HA-Ingress-Panel erreichbar.
 - [x] **Stage 0 (v0.1.0)** — Skelett-Add-on, CI, Status-Endpoint.
 - [x] **Stage 1 (v0.2.0)** — File-Watcher, Embedding (nomic-embed-text),
   Qdrant-Index, `/api/query` mit Top-K-Dokumenten.
-- [ ] **Stage 2 (v0.3.0)** — LLM-Integration (OpenAI-kompatibler Endpoint
-  konfigurierbar, Streaming-Antworten).
+- [x] **Stage 2 (v0.3.0)** — LLM-Integration mit Multi-Turn-Chat und
+  Server-Sent-Events-Streaming über jeden OpenAI-kompatiblen Endpoint.
 - [ ] **Stage 3 (v0.4.0)** — Web-UI: Eingabefeld, Antwort-Anzeige,
   Quellen-Links zurück nach BookStack.
 - [ ] **Stage 4+** — HA-Conversation-Plattform-Integration

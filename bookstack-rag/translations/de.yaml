@@ -17,6 +17,42 @@ configuration:
     description: >-
       Default-Anzahl der Treffer die /api/query zurückgibt, wenn der Aufruf
       kein eigenes top_k mitliefert. Bereich 1-50.
+  llm_base_url:
+    name: LLM-Base-URL
+    description: >-
+      OpenAI-kompatibler Chat-Completions-Endpoint, z.B.
+      http://192.168.1.100:11434/v1 (Ollama im LAN),
+      https://api.openai.com/v1, https://api.anthropic.com/v1 oder dein
+      eigener vLLM-/LM-Studio-Host. Leer lassen, um das Add-on im
+      Retrieval-only-Modus zu betreiben (keine LLM-Aufrufe).
+  llm_api_key:
+    name: LLM-API-Key
+    description: >-
+      Bearer-Token im Authorization-Header. Lokale Ollama-Setups lassen das
+      meist leer. Als Passwort-Feld markiert (HA verschleiert es in der UI,
+      es landet nie im Log).
+  llm_model:
+    name: LLM-Modell-Name
+    description: >-
+      Modell-Identifier wie ihn der Endpoint erwartet (z.B. qwen2.5:7b bei
+      Ollama, gpt-4o-mini bei OpenAI, claude-haiku-4-5 bei Anthropic,
+      gemini-2.0-flash bei Gemini). Leer heißt LLM bleibt deaktiviert.
+  llm_timeout:
+    name: LLM-Request-Timeout (Sekunden)
+    description: >-
+      Hartes Zeitlimit pro Chat-Completions-Request. Bereich 5-600. Default 60.
+  max_turns:
+    name: Conversation-Max-Turns
+    description: >-
+      Truncation der Conversation-History auf die letzten N User/Assistant-Paare
+      bevor an den LLM gesendet wird. Default 20. Senken bei kleinem
+      Context-Window oder Token-Kosten-Sorge.
+  system_prompt:
+    name: System-Prompt-Override
+    description: >-
+      Optionaler Override des eingebauten System-Prompts. Leer heißt das
+      Add-on nutzt seinen zweisprachigen Default (Deutsch + Englisch, weist
+      den LLM an strikt aus der bereitgestellten Doku zu antworten).
 
 network:
   8000/tcp: Web-UI-Port (nur relevant wenn Ingress deaktiviert ist — Default lässt den Zugriff ausschließlich über Ingress laufen)

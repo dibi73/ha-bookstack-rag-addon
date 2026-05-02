@@ -1,5 +1,5 @@
 name: BookStack RAG
-version: "0.2.0"
+version: "0.3.0"
 slug: bookstack_rag
 description: Local RAG over BookStack-exported Home Assistant documentation
 url: "https://github.com/dibi73/ha-bookstack-rag-addon"
@@ -22,7 +22,19 @@ options:
   bookstack_export_path: /config/bookstack_export
   embedding_model: nomic-ai/nomic-embed-text-v1.5
   top_k: 5
+  llm_base_url: ""
+  llm_api_key: ""
+  llm_model: ""
+  llm_timeout: 60
+  max_turns: 20
+  system_prompt: ""
 schema:
   bookstack_export_path: str
   embedding_model: str?
   top_k: "int(1,50)?"
+  llm_base_url: str?
+  llm_api_key: password?
+  llm_model: str?
+  llm_timeout: "int(5,600)?"
+  max_turns: "int(1,200)?"
+  system_prompt: str?

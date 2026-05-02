@@ -12,8 +12,10 @@ from qdrant_client import QdrantClient
 from app import __version__
 from app.api import router
 from app.config import load_config
+from app.conversations import ConversationStore
 from app.embedder import SentenceTransformerEmbedder
 from app.index import Index
+from app.llm import LLMClient
 from app.pipeline import Pipeline
 from app.watcher import Watcher
 
@@ -27,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Initialise embedder, Qdrant index, watcher; tear them down cleanly on exit."""
+    """Initialise embedder, Qdrant index, watcher, LLM, conversation store."""
     config: Config = app.state.config
     logger.info("Starting BookStack RAG v%s", __version__)
 
@@ -60,15 +62,38 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     watcher = Watcher(pipeline=pipeline)
     watcher.start()
 
+    llm = LLMClient(
+        base_url=config.llm_base_url,
+        api_key=config.llm_api_key,
+        model=config.llm_model,
+        timeout=float(config.llm_timeout),
+    )
+    if llm.is_configured:
+        logger.info(
+            "LLM configured: model=%s base_url=%s",
+            config.llm_model,
+            config.llm_base_url,
+        )
+    else:
+        logger.info(
+            "LLM not configured — /api/query stays in retrieval-only mode "
+            "until llm_base_url and llm_model are set",
+        )
+
+    conversations = ConversationStore(db_path=config.conversations_db_path)
+
     app.state.embedder = embedder
     app.state.index = index
     app.state.pipeline = pipeline
     app.state.watcher = watcher
+    app.state.llm = llm
+    app.state.conversations = conversations
 
     try:
         yield
     finally:
         watcher.stop()
+        await llm.close()
         client.close()
 
 
