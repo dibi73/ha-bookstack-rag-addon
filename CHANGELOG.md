@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-05-03
+
+Hotfix on top of v0.4.3: the add-on now boots cleanly (container,
+qdrant sidecar, embedder, watcher all up), but on a freshly-installed
+instance with hundreds of Markdown files the lifespan hangs in the
+synchronous initial reconcile sweep. Each file needs ~1-2 s on
+aarch64 CPU, and lifespan blocks `uvicorn` from binding the port —
+HA Ingress returns 502 for the entire startup duration.
+
+### Fixed
+
+- `app/main.py`: the initial `pipeline.reconcile_all()` is now
+  dispatched as an `asyncio.create_task` running via
+  `asyncio.to_thread` so the lifespan yields within seconds. Uvicorn
+  binds the port immediately, the Web UI loads, and queries work
+  against a partially-populated index that fills in the background.
+  The watcher is started **before** the reconcile task, so any
+  filesystem events arriving during the sweep are still handled —
+  consistency is preserved through the pipeline's hash-based
+  idempotency.
+
+### Notes
+
+- 91/91 tests stay green. The lifespan function is not directly
+  exercised by the test suite (tests build their own minimal apps);
+  the change is pure orchestration.
+- Existing `/api/query` and `/api/status` endpoints behave unchanged
+  while reconcile is in progress — `markdown_files` reports the on-
+  disk count, `indexed` reports the current Qdrant collection size
+  (which grows during the sweep). Queries return whatever is already
+  in the index.
+- On graceful shutdown the background task is cancelled and awaited.
+
 ## [0.4.3] - 2026-05-03
 
 Hotfix on top of v0.4.2: the add-on now passes schema validation and
@@ -369,7 +402,8 @@ Initial Stage 0 skeleton release.
   enter the dependency closure).
 - Indexing, embedding, RAG and the web UI all land in v0.2.0+.
 
-[Unreleased]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.3...HEAD
+[Unreleased]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.4...HEAD
+[0.4.4]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.0...v0.4.1
