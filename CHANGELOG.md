@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-05-03
+
+Hotfix on top of v0.4.1: the v0.4.1 image now builds successfully on real
+HA-Supervisor instances (debian + apt-get + PyTorch + model pre-download
+complete in ~5-6 min on aarch64), but the add-on refused to **start**
+with a schema-validation error:
+
+```
+App ... has invalid options: expected a URL. Got {... 'bookstack_base_url': '', 'homeassistant_base_url': ''}
+```
+
+### Fixed
+
+- `bookstack-rag/config.yaml` schema: `bookstack_base_url` and
+  `homeassistant_base_url` change from `url?` to `str?`. The `?` suffix
+  in HA add-on schemas means *„may be omitted from the dict"*, NOT
+  *„may be empty"*. An empty string `""` is treated as a present
+  value that fails URL-format validation. `str?` accepts both empty
+  and any string; the Python runtime in `app/llm.py:build_source_links`
+  already validates non-empty before constructing URLs.
+
+### Notes
+
+- No code changes — only the schema annotation. The 91-test suite
+  stays green.
+- `llm_base_url` was already declared as `str?` (correctly), which is
+  why no LLM-empty bug triggered earlier. Same model now applies to
+  the source-link URL fields.
+
 ## [0.4.1] - 2026-05-02
 
 Hotfix for the v0.4.0 install path. First-install attempts on real
@@ -298,7 +327,8 @@ Initial Stage 0 skeleton release.
   enter the dependency closure).
 - Indexing, embedding, RAG and the web UI all land in v0.2.0+.
 
-[Unreleased]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.2.0...v0.3.0
