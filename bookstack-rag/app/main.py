@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -31,9 +33,43 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+async def _run_initial_reconcile(pipeline: Pipeline) -> None:
+    """Run the bulk reconcile in a thread so the asyncio loop stays free.
+
+    Initial-reconcile on aarch64 with hundreds of Markdown files takes
+    minutes (each file = one embedding pass). We run it in
+    :func:`asyncio.to_thread` so HTTP requests can be served by uvicorn
+    in parallel — the API is responsive within seconds of container
+    start, queries arriving before the sweep finishes simply see a
+    partially-populated index.
+    """
+    try:
+        summary = await asyncio.to_thread(pipeline.reconcile_all)
+    except Exception:
+        logger.exception("Initial reconcile failed in background")
+        return
+    logger.info(
+        "Initial reconcile (background) complete: "
+        "indexed=%d unchanged=%d skipped=%d failed=%d",
+        summary.indexed,
+        summary.unchanged,
+        summary.skipped,
+        summary.failed,
+    )
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Initialise embedder, Qdrant index, watcher, LLM, conversation store."""
+    """Initialise embedder, Qdrant index, watcher, LLM, conversation store.
+
+    Heavy work that blocks the lifespan critical path causes HA Ingress
+    502s for the entire startup duration: uvicorn does not bind the port
+    until the lifespan yields. We therefore keep this function bounded
+    (~30 s on aarch64) by deferring the initial reconcile sweep to a
+    background task — the watcher is already up and catches any
+    filesystem events that arrive during the sweep, so consistency is
+    preserved.
+    """
     config: Config = app.state.config
     logger.info("Starting BookStack RAG v%s", __version__)
 
@@ -52,15 +88,6 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         export_path=config.bookstack_export_path,
         embedder=embedder,
         index=index,
-    )
-
-    summary = pipeline.reconcile_all()
-    logger.info(
-        "Initial reconcile: indexed=%d unchanged=%d skipped=%d failed=%d",
-        summary.indexed,
-        summary.unchanged,
-        summary.skipped,
-        summary.failed,
     )
 
     watcher = Watcher(pipeline=pipeline)
@@ -93,9 +120,16 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.llm = llm
     app.state.conversations = conversations
 
+    reconcile_task = asyncio.create_task(_run_initial_reconcile(pipeline))
+    app.state.reconcile_task = reconcile_task
+    logger.info("Initial reconcile dispatched as background task — API is now ready")
+
     try:
         yield
     finally:
+        reconcile_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await reconcile_task
         watcher.stop()
         await llm.close()
         client.close()
