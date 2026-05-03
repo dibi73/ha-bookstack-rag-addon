@@ -44,7 +44,7 @@ class SentenceTransformerEmbedder:
         self._model = SentenceTransformer(self.model_name, trust_remote_code=True)
         logger.info(
             "Embedding model loaded — vector size %d",
-            self._model.get_sentence_embedding_dimension(),
+            self._dimension(),
         )
 
     @property
@@ -53,7 +53,17 @@ class SentenceTransformerEmbedder:
         if self._model is None:
             msg = "Embedder not loaded yet — call load() first"
             raise RuntimeError(msg)
-        return self._model.get_sentence_embedding_dimension()
+        return self._dimension()
+
+    def _dimension(self) -> int:
+        # sentence-transformers renamed `get_sentence_embedding_dimension` to
+        # `get_embedding_dimension` in a recent release; the old name still
+        # exists but emits a FutureWarning. Prefer the new name when available.
+        assert self._model is not None  # noqa: S101
+        getter = getattr(self._model, "get_embedding_dimension", None)
+        if getter is None:
+            getter = self._model.get_sentence_embedding_dimension
+        return int(getter())
 
     def embed(self, text: str) -> list[float]:
         """Embed a single text into one vector."""
