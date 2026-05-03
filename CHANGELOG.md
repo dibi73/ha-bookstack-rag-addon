@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-05-03
+
+Hotfix on top of v0.4.2: the add-on now passes schema validation and
+starts uvicorn, but the qdrant sidecar fails to launch with
+
+```
+/usr/local/bin/qdrant: error while loading shared libraries:
+libunwind-ptrace.so.0: cannot open shared object file
+```
+
+We `COPY --from=qdrant_source /qdrant/qdrant ...` only the binary
+itself, not its runtime libraries. The upstream `qdrant/qdrant` image
+installs `libunwind8` (which contains `libunwind-ptrace.so.0`); our
+slim base did not.
+
+### Fixed
+
+- `bookstack-rag/Dockerfile`: add `libunwind8` to the
+  `apt-get install` line. The package contains
+  `libunwind-ptrace.so.0` plus the rest of the libunwind family that
+  qdrant needs for stack-trace generation.
+
+### Changed
+
+- `app/embedder.py`: prefer
+  `SentenceTransformer.get_embedding_dimension()` when available
+  (newer sentence-transformers releases) and fall back to the
+  deprecated `get_sentence_embedding_dimension()` otherwise. Silences
+  the runtime FutureWarning we saw next to the qdrant errors.
+
+### Notes
+
+- 91/91 tests stay green. FakeEmbedder is unaffected because it has
+  its own `vector_size` implementation that doesn't touch
+  sentence-transformers.
+- The CI smoke build still does not actually run the container, which
+  is why this class of "binary fails to start because of a missing
+  shared library" bug slipped through. v0.5.0's plan to publish
+  prebuilt images via `home-assistant/builder` will run a real
+  container during the publish step and catch this category at CI
+  time. Until then, real-host-install testing is the only gate.
+
 ## [0.4.2] - 2026-05-03
 
 Hotfix on top of v0.4.1: the v0.4.1 image now builds successfully on real
@@ -327,7 +369,8 @@ Initial Stage 0 skeleton release.
   enter the dependency closure).
 - Indexing, embedding, RAG and the web UI all land in v0.2.0+.
 
-[Unreleased]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.3...HEAD
+[0.4.3]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.3.0...v0.4.0

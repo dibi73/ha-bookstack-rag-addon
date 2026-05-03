@@ -27,16 +27,21 @@ ENV LANG=C.UTF-8 \
     S6_BEHAVIOUR_IF_STAGE2_FAILS=2 \
     S6_KEEP_ENV=1
 
-# System packages: curl + xz for the s6-overlay install, build-essential
-# for any wheel that still needs to compile, ca-certificates for HTTPS.
-# We keep build-essential in the final image because removing it would
-# also drop libstdc++ which torch needs.
+# System packages:
+# - ca-certificates: HTTPS to PyPI / HuggingFace
+# - curl + xz-utils: the s6-overlay install at the next layer
+# - build-essential: any wheel that still needs to compile
+# - libunwind8: provides libunwind-ptrace.so.0 which the qdrant binary
+#   we copy in below dynamically links against. Without this qdrant
+#   fails to start with "error while loading shared libraries:
+#   libunwind-ptrace.so.0: cannot open shared object file".
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
         xz-utils \
         build-essential \
+        libunwind8 \
     && rm -rf /var/lib/apt/lists/*
 
 # s6-overlay v3 — noarch userland + arch-specific binaries.
@@ -84,6 +89,6 @@ LABEL \
     io.hass.name="BookStack RAG" \
     io.hass.description="Local RAG over BookStack-exported Home Assistant documentation" \
     io.hass.type="addon" \
-    io.hass.version="0.4.2" \
+    io.hass.version="0.4.3" \
     io.hass.arch="amd64|aarch64" \
     maintainer="dibi73 <https://github.com/dibi73>"
