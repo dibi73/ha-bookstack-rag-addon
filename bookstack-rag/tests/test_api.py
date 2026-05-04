@@ -281,6 +281,95 @@ def test_query_validates_empty_text(client: TestClient) -> None:
 def test_query_503_when_index_not_ready(client_no_index: TestClient) -> None:
     response = client_no_index.post("/api/query", json={"text": "anything"})
     assert response.status_code == 503
+    assert response.headers.get("retry-after") == "5"
+
+
+def test_status_initializing_phase_is_surfaced(
+    options_file: Path,
+    monkeypatch,
+) -> None:
+    """When app.state.startup.phase is in INITIALIZING_PHASES, status reports it.
+
+    Mimics the production lifespan that has yielded but whose background
+    startup task hasn't finished loading the embedder yet.
+    """
+    from app.main import StartupState  # noqa: PLC0415
+
+    monkeypatch.setenv("ADDON_OPTIONS", str(options_file))
+    config = load_config()
+    app = FastAPI(title="t", version=__version__)
+    app.state.config = config
+    app.state.startup = StartupState(phase="loading_embedder")
+    app.include_router(router, prefix="/api")
+    with TestClient(app) as initialising_client:
+        response = initialising_client.get("/api/status")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "initializing"
+    assert body["phase"] == "loading_embedder"
+    assert body["indexed"] == 0
+    assert body["llm_configured"] is False
+
+
+def test_status_failed_phase_surfaces_error(
+    options_file: Path,
+    monkeypatch,
+) -> None:
+    """A startup-task crash flips status to "error" and surfaces the message."""
+    from app.main import StartupState  # noqa: PLC0415
+
+    monkeypatch.setenv("ADDON_OPTIONS", str(options_file))
+    config = load_config()
+    app = FastAPI(title="t", version=__version__)
+    app.state.config = config
+    app.state.startup = StartupState(phase="failed", error="qdrant unreachable")
+    app.include_router(router, prefix="/api")
+    with TestClient(app) as failed_client:
+        response = failed_client.get("/api/status")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "error"
+    assert body["error"] == "qdrant unreachable"
+
+
+def test_status_ready_phase_uses_legacy_ok_shape(  # noqa: PLR0913
+    options_file: Path,
+    fake_embedder,
+    index,
+    pipeline: Pipeline,
+    fake_llm: FakeLLMClient,
+    conversations_store,
+    monkeypatch,
+) -> None:
+    """phase == "ready" returns the same body shape pre-v0.5 callers expect."""
+    from app.main import StartupState  # noqa: PLC0415
+
+    monkeypatch.setenv("ADDON_OPTIONS", str(options_file))
+    config = load_config()
+    app = FastAPI(title="t", version=__version__)
+    app.state.config = config
+    app.state.embedder = fake_embedder
+    app.state.index = index
+    app.state.pipeline = pipeline
+    app.state.llm = fake_llm
+    app.state.conversations = conversations_store
+    app.state.startup = StartupState(phase="ready")
+    app.include_router(router, prefix="/api")
+    with TestClient(app) as ready_client:
+        response = ready_client.get("/api/status")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ok"
+    assert "phase" not in body  # legacy shape stays clean
+    assert body["llm_configured"] is True
+
+
+def test_reindex_retry_after_when_pipeline_not_ready(
+    client_no_index: TestClient,
+) -> None:
+    response = client_no_index.post("/api/reindex")
+    assert response.status_code == 503
+    assert response.headers.get("retry-after") == "5"
 
 
 def test_list_conversations_returns_recent_first(

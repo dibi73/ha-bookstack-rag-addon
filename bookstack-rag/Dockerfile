@@ -89,6 +89,6 @@ LABEL \
     io.hass.name="BookStack RAG" \
     io.hass.description="Local RAG over BookStack-exported Home Assistant documentation" \
     io.hass.type="addon" \
-    io.hass.version="0.4.4" \
+    io.hass.version="0.4.5" \
     io.hass.arch="amd64|aarch64" \
     maintainer="dibi73 <https://github.com/dibi73>"

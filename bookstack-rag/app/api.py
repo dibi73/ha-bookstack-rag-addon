@@ -29,6 +29,35 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Phases set by app.main._run_startup. While the background task is in any
+# of these, /api/status reports status="initializing" so the SPA can show a
+# loader instead of a red error pill, and /api/query + /api/reindex respond
+# 503 with Retry-After.
+INITIALIZING_PHASES = frozenset(
+    {"starting", "loading_embedder", "creating_collection", "indexing"},
+)
+NOT_READY_RETRY_AFTER_SECONDS = "5"
+
+
+def _startup_phase(request: Request) -> str | None:
+    """Return the StartupState.phase if the app exposes one, else None.
+
+    Tests build minimal apps without a StartupState and wire the production
+    state attributes directly; in that case we return None and the legacy
+    "ok" / "no_export_dir" branch in :func:`status` runs unchanged.
+    """
+    startup = getattr(request.app.state, "startup", None)
+    if startup is None:
+        return None
+    return str(startup.phase)
+
+
+def _startup_error(request: Request) -> str | None:
+    startup = getattr(request.app.state, "startup", None)
+    if startup is None:
+        return None
+    return startup.error
+
 
 class QueryRequest(BaseModel):
     """Body of POST /api/query."""
@@ -110,13 +139,51 @@ def _resolved_system_prompt(config: Config) -> str:
 
 @router.get("/status")
 def status(request: Request) -> dict[str, object]:
-    """Return export-path health, Markdown-file count, and index size."""
+    """Return export-path health, Markdown-file count, index size, startup phase.
+
+    Three response shapes share a common envelope (export_path,
+    markdown_files, indexed, llm_configured). The discriminator is
+    ``status``:
+
+    - ``"initializing"`` while the background startup task is loading the
+      embedder, creating the qdrant collection, or running the initial
+      reconcile sweep. Carries ``phase`` so the UI can show what's
+      happening.
+    - ``"error"`` if the startup task aborted. Carries ``error``.
+    - ``"ok"`` / ``"no_export_dir"`` once the add-on is ready (legacy shape
+      used by tests that bypass the production lifespan).
+    """
     config: Config = request.app.state.config
     export_path: Path = config.bookstack_export_path
     index: Index | None = getattr(request.app.state, "index", None)
     indexed_count = index.count() if index is not None else 0
     llm: LLMClient | None = getattr(request.app.state, "llm", None)
     llm_configured = bool(llm and llm.is_configured)
+    markdown_count = (
+        sum(1 for _ in export_path.rglob("*.md")) if export_path.is_dir() else 0
+    )
+
+    phase = _startup_phase(request)
+
+    if phase in INITIALIZING_PHASES:
+        return {
+            "status": "initializing",
+            "phase": phase,
+            "export_path": str(export_path),
+            "markdown_files": markdown_count,
+            "indexed": indexed_count,
+            "llm_configured": llm_configured,
+        }
+    if phase == "failed":
+        return {
+            "status": "error",
+            "phase": "failed",
+            "error": _startup_error(request) or "unknown error",
+            "export_path": str(export_path),
+            "markdown_files": markdown_count,
+            "indexed": indexed_count,
+            "llm_configured": llm_configured,
+        }
 
     if not export_path.is_dir():
         return {
@@ -126,7 +193,6 @@ def status(request: Request) -> dict[str, object]:
             "indexed": indexed_count,
             "llm_configured": llm_configured,
         }
-    markdown_count = sum(1 for _ in export_path.rglob("*.md"))
     return {
         "status": "ok",
         "export_path": str(export_path),
@@ -176,6 +242,7 @@ async def query(
         raise HTTPException(
             status_code=503,
             detail="index not ready yet — try again in a moment",
+            headers={"Retry-After": NOT_READY_RETRY_AFTER_SECONDS},
         )
 
     top_k = body.top_k if body.top_k is not None else config.top_k
@@ -358,6 +425,7 @@ def reindex(request: Request) -> ReindexResponse:
         raise HTTPException(
             status_code=503,
             detail="index not ready yet — try again in a moment",
+            headers={"Retry-After": NOT_READY_RETRY_AFTER_SECONDS},
         )
     summary = pipeline.reconcile_all()
     return ReindexResponse(

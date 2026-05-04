@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-05-04
+
+### Fixed
+
+- Cold-start "add-on appears dead" symptom on freshly-restarted
+  containers. The lifespan critical path used to load the
+  sentence-transformers model (~10-30 s on aarch64) and bring up the
+  qdrant collection synchronously, so uvicorn never bound port 8000
+  during that window — HA Ingress returned 502 the whole time and the
+  container looked hung.
+  - `app/main.py` splits initialisation: lightweight services (LLM
+    client, SQLite conversation store) stay in the lifespan;
+    embedder load, qdrant collection setup, watcher, and the initial
+    reconcile sweep move into a single background task tracked by a
+    new `StartupState(phase, error)` on `app.state.startup`. Lifespan
+    yields in <1 s; the SPA loads immediately.
+  - `app/api.py` — `/api/status` now returns `{status:
+    "initializing", phase: ...}` while the background task is
+    progressing through `loading_embedder` → `creating_collection` →
+    `indexing`, `{status: "error", error: ...}` if the task crashed,
+    and the legacy `{status: "ok"}` shape once `phase == "ready"`.
+    `/api/query` and `/api/reindex` continue to 503 when the
+    components aren't wired yet but now include `Retry-After: 5`.
+  - `app/ui/app.js` polls `/api/status` every 1.5 s while the phase
+    reports initialising, surfaces the phase in the index pill ("Lädt
+    Modell …", "Bereitet Index vor …", "Indiziert (N) …"), and locks
+    the composer with an explanatory placeholder until the embedder
+    is loaded. From the `indexing` phase onwards the composer is
+    unlocked again — queries hit the partially-populated index, same
+    semantics as v0.4.4's background reconcile.
+
+### Notes
+
+- 95 tests (was 91 in v0.4.4). Four new tests cover the
+  `initializing` / `failed` / `ready` status branches and the
+  `Retry-After` header on the 503 fallback paths.
+- Tests bypass the production lifespan and wire `app.state.*`
+  directly, so they don't exercise `StartupState`; the API layer
+  treats a missing `app.state.startup` as "phase = ready" for that
+  reason. No fixture changes were needed.
+
 ## [0.4.4] - 2026-05-03
 
 Hotfix on top of v0.4.3: the add-on now boots cleanly (container,
@@ -402,7 +443,8 @@ Initial Stage 0 skeleton release.
   enter the dependency closure).
 - Indexing, embedding, RAG and the web UI all land in v0.2.0+.
 
-[Unreleased]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.4...HEAD
+[Unreleased]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.5...HEAD
+[0.4.5]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.1...v0.4.2

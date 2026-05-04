@@ -31,7 +31,11 @@
     activeConversationId: null,
     streaming: false,
     llmConfigured: false,
+    composerLocked: false,
   };
+
+  let statusPollTimer = null;
+  const STATUS_POLL_INTERVAL_MS = 1500;
 
   // ---- Event wiring -----------------------------------------------------
 
@@ -67,21 +71,93 @@
   // ---- Status -----------------------------------------------------------
 
   async function refreshStatus() {
+    if (statusPollTimer) {
+      clearTimeout(statusPollTimer);
+      statusPollTimer = null;
+    }
+    let body = null;
+    let fetchError = null;
     try {
       const res = await fetch("api/status");
-      if (!res.ok) throw new Error("status " + res.status);
-      const body = await res.json();
-      state.llmConfigured = !!body.llm_configured;
-      const indexCls = body.indexed > 0 ? "is-ok" : "is-warn";
-      statusIndexEl.className = `status-pill ${indexCls}`;
-      statusIndexEl.textContent = `${body.indexed} indiziert`;
-      const llmCls = body.llm_configured ? "is-ok" : "is-warn";
-      statusLlmEl.className = `status-pill ${llmCls}`;
-      statusLlmEl.textContent = body.llm_configured ? "LLM aktiv" : "LLM aus";
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      body = await res.json();
     } catch (err) {
-      statusLlmEl.className = "status-pill is-error";
-      statusLlmEl.textContent = "Status: " + String(err.message || err);
+      fetchError = err;
     }
+
+    if (fetchError) {
+      // Most likely the API is still binding the port — keep polling.
+      statusLlmEl.className = "status-pill is-warn";
+      statusLlmEl.textContent = "Verbinde …";
+      statusIndexEl.className = "status-pill is-warn";
+      statusIndexEl.textContent = "Add-on startet …";
+      applyComposerLock(true, "Add-on startet, bitte warten …");
+      statusPollTimer = setTimeout(refreshStatus, STATUS_POLL_INTERVAL_MS);
+      return;
+    }
+
+    state.llmConfigured = !!body.llm_configured;
+
+    const llmCls = body.llm_configured ? "is-ok" : "is-warn";
+    statusLlmEl.className = `status-pill ${llmCls}`;
+    statusLlmEl.textContent = body.llm_configured ? "LLM aktiv" : "LLM aus";
+
+    if (body.status === "initializing") {
+      statusIndexEl.className = "status-pill is-warn";
+      statusIndexEl.textContent = phaseLabel(body.phase, body.indexed);
+      // We can serve queries against a partially-populated index once the
+      // embedder is loaded and the collection exists, i.e. from the
+      // "indexing" phase onwards. Earlier phases must lock the composer.
+      const earlyPhase = body.phase === "starting"
+        || body.phase === "loading_embedder"
+        || body.phase === "creating_collection";
+      applyComposerLock(earlyPhase, phasePlaceholder(body.phase));
+      statusPollTimer = setTimeout(refreshStatus, STATUS_POLL_INTERVAL_MS);
+      return;
+    }
+
+    if (body.status === "error") {
+      statusIndexEl.className = "status-pill is-error";
+      statusIndexEl.textContent = "Init fehlgeschlagen";
+      applyComposerLock(true, "Initialisierung fehlgeschlagen — siehe Add-on-Log");
+      // Keep polling at a slower cadence in case the user fixes it
+      statusPollTimer = setTimeout(refreshStatus, STATUS_POLL_INTERVAL_MS * 4);
+      return;
+    }
+
+    // status == "ok" or "no_export_dir" — fully initialised
+    const indexCls = body.indexed > 0 ? "is-ok" : "is-warn";
+    statusIndexEl.className = `status-pill ${indexCls}`;
+    statusIndexEl.textContent = `${body.indexed} indiziert`;
+    applyComposerLock(false, "Frage eingeben — Enter zum Senden, Shift+Enter für Zeilenumbruch");
+  }
+
+  function phaseLabel(phase, indexed) {
+    switch (phase) {
+      case "starting": return "Startet …";
+      case "loading_embedder": return "Lädt Modell …";
+      case "creating_collection": return "Bereitet Index vor …";
+      case "indexing": return `Indiziert (${indexed}) …`;
+      default: return phase || "Initialisiert …";
+    }
+  }
+
+  function phasePlaceholder(phase) {
+    switch (phase) {
+      case "starting": return "Add-on initialisiert, bitte warten …";
+      case "loading_embedder": return "Lädt Embedding-Modell, bitte warten …";
+      case "creating_collection": return "Bereitet Index vor, bitte warten …";
+      case "indexing": return "Frage eingeben — Index wird im Hintergrund aufgebaut";
+      default: return "Initialisiert, bitte warten …";
+    }
+  }
+
+  function applyComposerLock(locked, placeholder) {
+    state.composerLocked = locked;
+    inputEl.placeholder = placeholder;
+    if (state.streaming) return; // setStreaming will reset disabled state when done
+    sendBtn.disabled = locked;
+    inputEl.disabled = locked;
   }
 
   // ---- Conversation list -----------------------------------------------
@@ -197,7 +273,7 @@
 
   async function sendCurrentInput() {
     const text = inputEl.value.trim();
-    if (!text || state.streaming) return;
+    if (!text || state.streaming || state.composerLocked) return;
     if (emptyStateEl.parentElement === conversationEl) {
       conversationEl.removeChild(emptyStateEl);
     }
@@ -382,8 +458,9 @@
 
   function setStreaming(on) {
     state.streaming = on;
-    sendBtn.disabled = on;
-    inputEl.disabled = on;
+    const blocked = on || state.composerLocked;
+    sendBtn.disabled = blocked;
+    inputEl.disabled = blocked;
     sendBtn.textContent = on ? "…" : "Senden";
   }
 
