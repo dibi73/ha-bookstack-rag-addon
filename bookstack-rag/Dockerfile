@@ -14,9 +14,14 @@
 # build.yaml again.
 # ==============================================================================
 
+# Global ARG declared before any FROM so ${BUILD_FROM} is usable in
+# subsequent FROM directives. Defaults to python:3.12-slim-bookworm
+# for local builds; the home-assistant/builder action overrides via
+# build.yaml's `build_from` map.
+ARG BUILD_FROM=python:3.12-slim-bookworm
+
 FROM qdrant/qdrant:v1.17.1 AS qdrant_source
 
-ARG BUILD_FROM=python:3.12-slim-bookworm
 FROM ${BUILD_FROM}
 
 ARG S6_OVERLAY_VERSION=3.2.0.2
