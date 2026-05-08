@@ -1,22 +1,28 @@
 # ==============================================================================
-# Stage 1 build — multi-stage so we can cherry-pick the qdrant binary
-# from the upstream qdrant image without dragging in its full filesystem.
+# Multi-stage build — first stage cherry-picks the qdrant binary from the
+# upstream image, second stage assembles the runtime environment.
 #
-# Base is the upstream python:3.12-slim-bookworm (debian/glibc) hard-coded
-# rather than driven by ARG BUILD_FROM. Reason: Home Assistant Supervisor's
-# local-build path ignores `build.yaml` and injects its own
-# ghcr.io/home-assistant/base:latest (alpine) as BUILD_FROM when the value
-# is unset, which then breaks our `apt-get` step (`apk` lives there, not
-# `apt-get`). PyTorch ships no musllinux wheels, so alpine is a dead end
-# for the ML pipeline. By hard-coding the base we ensure the same image
-# both in Supervisor-local-build and in the GitHub-Actions smoke build.
-# v0.5.0+ will publish the resulting image to ghcr.io and reference it via
-# `image:` in config.yaml so users skip the local build entirely.
+# Since v0.5.0 this Dockerfile is consumed by `home-assistant/builder` (per
+# build.yaml) and the resulting per-arch images are published to ghcr.io.
+# `image:` in config.yaml points users at those, so the Supervisor pulls
+# instead of building locally — no more BUILD_FROM-injection drama.
+#
+# The smoke-build CI workflow (build.yml) passes BUILD_FROM as a build-arg
+# to keep the same image format. v0.4.1–v0.4.4 hardcoded
+# python:3.12-slim-bookworm to survive Supervisor's BUILD_FROM injection;
+# now that local builds are off the table we can take the value from
+# build.yaml again.
 # ==============================================================================
+
+# Global ARG declared before any FROM so ${BUILD_FROM} is usable in
+# subsequent FROM directives. Defaults to python:3.12-slim-bookworm
+# for local builds; the home-assistant/builder action overrides via
+# build.yaml's `build_from` map.
+ARG BUILD_FROM=python:3.12-slim-bookworm
 
 FROM qdrant/qdrant:v1.17.1 AS qdrant_source
 
-FROM python:3.12-slim-bookworm
+FROM ${BUILD_FROM}
 
 ARG S6_OVERLAY_VERSION=3.2.0.2
 ARG TARGETARCH
@@ -89,6 +95,6 @@ LABEL \
     io.hass.name="BookStack RAG" \
     io.hass.description="Local RAG over BookStack-exported Home Assistant documentation" \
     io.hass.type="addon" \
-    io.hass.version="0.4.5" \
+    io.hass.version="0.5.0" \
     io.hass.arch="amd64|aarch64" \
     maintainer="dibi73 <https://github.com/dibi73>"

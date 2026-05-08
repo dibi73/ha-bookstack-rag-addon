@@ -11,13 +11,14 @@ proxy, …) and a simple web UI for the whole household.
 
 ## Status
 
-**Stage 3 — v0.4.0**.
+**Stage 3 — v0.5.0**.
 
-This release adds the **built-in web UI** plus inline source-link
-enrichment. Open the add-on panel in Home Assistant, type a question,
-read the streamed answer with clickable links jumping straight back
-to BookStack (for the doc) or to the HA frontend (to edit the actual
-device).
+Stage 3 is feature-complete: built-in web UI plus inline source-link
+enrichment, non-blocking cold-start (since v0.4.5), multi-arch
+pre-built images on ghcr.io (since v0.5.0). Open the add-on panel in
+Home Assistant, type a question, read the streamed answer with
+clickable links jumping straight back to BookStack (for the doc) or
+to the HA frontend (to edit the actual device).
 
 What ships:
 - Everything from v0.3.0 (LLM integration, multi-turn chat, SSE
@@ -58,7 +59,13 @@ Web UI through Home Assistant Ingress
 3. The "BookStack RAG" add-on now appears in the store. Click **Install**.
 4. Configure the export path (default: `/config/bookstack_export`, which
    matches the integration's default).
-5. **Start** the add-on. The Ingress panel link appears in the HA sidebar.
+5. **Start** the add-on. Since v0.5.0 Supervisor pulls a pre-built
+   image from `ghcr.io/dibi73/{arch}-bookstack-rag-addon` (~2 min on
+   a Pi 4/5 64-bit, faster on x86) instead of building locally. The
+   Ingress panel link appears in the HA sidebar; the panel loads
+   immediately and the SPA polls `/api/status` for the actual
+   readiness phase (embedder load → collection setup → indexing →
+   ready, typically 30–60 s on aarch64 from a fresh container).
 
 ## Configuration
 

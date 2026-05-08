@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   smoke-build:
-    name: "Smoke build (amd64)"
+    name: "Smoke build + run (amd64)"
     runs-on: "ubuntu-latest"
     steps:
       - name: Checkout the repository
@@ -22,10 +22,75 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Build add-on image (amd64 only — full multi-arch happens on release)
+      - name: Build add-on image (amd64)
         uses: docker/build-push-action@v7
         with:
           context: ./bookstack-rag
           push: false
           load: true
           tags: bookstack-rag:ci
+          # The buildkit cache halves the second-run wall time and saves
+          # most of the 5-minute PyTorch + nomic-embed-text install layer.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # docker-run smoke. Closes the gap that produced v0.4.1 → v0.4.5
+      # (five hotfixes in a row, each a runtime issue invisible to
+      # `docker build`).
+      - name: Prepare add-on data dir
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/addon-data /tmp/addon-config/bookstack_export
+          cat > /tmp/addon-data/options.json <<'EOF'
+          {
+            "bookstack_export_path": "/config/bookstack_export",
+            "embedding_model": "nomic-ai/nomic-embed-text-v1.5",
+            "top_k": 5,
+            "llm_base_url": "",
+            "llm_api_key": "",
+            "llm_model": "",
+            "llm_timeout": 60,
+            "max_turns": 20,
+            "system_prompt": "",
+            "bookstack_base_url": "",
+            "homeassistant_base_url": ""
+          }
+          EOF
+
+      - name: Run container in background
+        run: |
+          set -euo pipefail
+          docker run -d --name bookstack-rag-smoke \
+            -p 8000:8000 \
+            -v /tmp/addon-data:/data \
+            -v /tmp/addon-config:/config:ro \
+            bookstack-rag:ci
+
+      - name: Wait for /api/status (max 120s)
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 120); do
+            if BODY=$(curl -sf http://localhost:8000/api/status 2>/dev/null); then
+              echo "Got response after ${i}s:"
+              echo "$BODY" | python3 -m json.tool
+              # Status must be one of the known values; phase (when present)
+              # must progress monotonically. We accept initializing/ok here
+              # — failed would mean the embedder or qdrant collection blew up.
+              STATUS=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])")
+              case "$STATUS" in
+                ok|initializing) echo "Smoke OK (status=$STATUS)"; exit 0 ;;
+                *) echo "::error::Unexpected status: $STATUS" ; exit 1 ;;
+              esac
+            fi
+            sleep 1
+          done
+          echo "::error::No response from /api/status after 120s"
+          exit 1
+
+      - name: Container logs (always)
+        if: always()
+        run: docker logs bookstack-rag-smoke || true
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f bookstack-rag-smoke || true

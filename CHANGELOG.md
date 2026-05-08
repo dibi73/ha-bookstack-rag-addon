@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-08
+
+The "no more local build" release. Closes the structural gap that
+produced five hotfix cycles in a row (v0.4.1 → v0.4.5): every release
+shipped a runtime issue that `docker build` could not catch but
+`docker run` would have. v0.5.0 publishes pre-built multi-arch images
+to ghcr.io so the Supervisor pulls instead of building, AND adds a
+real `docker run` smoke phase to the build CI so the same class of
+bug surfaces in pull requests.
+
+### Added
+
+- `.github/workflows/builder.yml` — new workflow using
+  `home-assistant/builder` to build per-arch images
+  (`amd64`, `aarch64`) on every published GitHub Release and push
+  them to `ghcr.io/dibi73/{arch}-bookstack-rag-addon`. Triggers
+  also on `workflow_dispatch` for verification runs before tagging.
+- `bookstack-rag/config.yaml` — `image:
+  ghcr.io/dibi73/{arch}-bookstack-rag-addon`. Supervisor resolves
+  the `{arch}` placeholder at install time and pulls the matching
+  manifest. Local-build fallback still works if the image isn't
+  reachable, so air-gapped setups stay functional.
+- `bookstack-rag/config.yaml` — `watchdog:
+  http://[HOST]:[PORT:8000]/api/status`. Supervisor pings the
+  endpoint and surfaces a real "ready" indicator on the add-on
+  detail page instead of just "PID 1 alive".
+- `.github/workflows/build.yml` — after the smoke build, the
+  workflow now `docker run`s the resulting image with a synthetic
+  `/data/options.json`, polls `/api/status` for up to 120 s, and
+  fails the job if the response status isn't `ok` /
+  `initializing`. Closes the v0.4.1–v0.4.5 lessons-learned gap.
+
+### Changed
+
+- `bookstack-rag/Dockerfile` — `FROM ${BUILD_FROM}` again, with
+  `python:3.12-slim-bookworm` as the ARG default for local builds.
+  v0.4.1 had to hardcode the base image to survive Supervisor's
+  BUILD_FROM injection on local builds; now that local builds are
+  off the table for normal users we can take the value from
+  `build.yaml` again. Builder action sets it from build.yaml; the
+  smoke-build CI inherits the same default.
+- `bookstack-rag/build.yaml` — comments updated to reflect that
+  this file is now load-bearing (was advisory while we shipped via
+  local-build only).
+- `README.md`, `bookstack-rag/README.md`, `bookstack-rag/DOCS.md` —
+  drop the "first install 5–15 min" warnings, replace with the
+  ~2 min ghcr.io-pull expectation. Updated status banners point at
+  v0.5.0.
+
+### Notes
+
+- 95 tests still pass (no Python changes in this release apart
+  from the version bump).
+- First-time installers still need ~3 GB free disk for the image
+  (PyTorch + nomic-embed-text-v1.5 dominate) and ~2 GB free RAM at
+  runtime. The numbers don't change; only the wall-clock time to
+  reach a ready state on first install drops.
+- ghcr.io packages must be public for Supervisor to pull
+  anonymously. The first build run creates them as private; flip
+  them to public once via the GitHub UI or `gh api -X PATCH
+  /user/packages/container/<name>/visibility` one-shot.
+
 ## [0.4.5] - 2026-05-04
 
 ### Fixed
@@ -443,7 +505,8 @@ Initial Stage 0 skeleton release.
   enter the dependency closure).
 - Indexing, embedding, RAG and the web UI all land in v0.2.0+.
 
-[Unreleased]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.5...HEAD
+[Unreleased]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.5...v0.5.0
 [0.4.5]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/dibi73/ha-bookstack-rag-addon/compare/v0.4.2...v0.4.3

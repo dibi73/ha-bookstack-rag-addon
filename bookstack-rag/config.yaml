@@ -1,7 +1,7 @@
 name: BookStack RAG
-version: "0.4.5"
+version: "0.5.0"
 slug: bookstack_rag
-description: "Local RAG over BookStack-exported HA docs. First install: 5-15 min build (PyTorch + nomic-embed model)."
+description: "Local RAG over BookStack-exported HA docs."
 url: "https://github.com/dibi73/ha-bookstack-rag-addon"
 arch:
   - amd64
@@ -16,6 +16,8 @@ panel_title: BookStack RAG
 homeassistant_api: false
 host_network: false
 auth_api: false
+image: ghcr.io/dibi73/{arch}-bookstack-rag-addon
+watchdog: "http://[HOST]:[PORT:8000]/api/status"
 map:
   - config:ro
 options:

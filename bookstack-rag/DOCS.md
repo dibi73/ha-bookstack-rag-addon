@@ -2,14 +2,11 @@
 
 This page is rendered inside the Home Assistant Add-on UI.
 
-> ⏱️ **Erstinstallation dauert 5-15 Minuten.** Der HA-Supervisor baut den
-> Container lokal auf deinem Host: `python:3.12-slim-bookworm`-Base
-> ziehen, ~700 MB PyTorch installieren, das `nomic-embed-text`-Modell
-> (~500 MB) vorab herunterladen, das Qdrant-Binary kopieren. Während
-> dieser Zeit zeigt HA *„Installing…"* — das ist normal, nicht hängen.
-> Folgende Updates und Container-Restarts sind viel schneller (Layer-
-> Cache + Modell ist im Image gebaked). Erstinstall braucht ~3 GB freie
-> Disk und ~2 GB freien RAM auf dem HA-Host.
+> Seit v0.5.0 pullt der HA-Supervisor vorgebaute Images von ghcr.io
+> (~2 Min Erstinstall) statt lokal zu bauen. Multi-Arch (amd64 +
+> aarch64). Auf dem HA-Host werden ~3 GB freier Disk-Platz für das
+> Image und ~2 GB freier RAM zur Laufzeit gebraucht (PyTorch +
+> Embedding-Modell + Qdrant + FastAPI).
 
 ## What this add-on does
 
@@ -36,11 +33,14 @@ The full pipeline:
 
 ## Current stage
 
-**Stage 3 — v0.4.0.** Built-in web UI is now mounted at the add-on's
-ingress panel root: open *Settings → Add-ons → BookStack RAG →
-Open Web UI* and you land in a full chat interface (sidebar with chat
-history, streaming Markdown answers, mobile-responsive). REST endpoints
-remain available for programmatic access.
+**Stage 3 — v0.5.0.** Built-in web UI mounted at the add-on's ingress
+panel root: open *Settings → Add-ons → BookStack RAG → Open Web UI*
+and you land in a full chat interface (sidebar with chat history,
+streaming Markdown answers, mobile-responsive). REST endpoints remain
+available for programmatic access. Since v0.4.5 the cold-start path is
+non-blocking — the panel loads in <1 s and the SPA polls
+`/api/status` for the actual readiness phase. Since v0.5.0 multi-arch
+images are pulled from ghcr.io.
 
 > 64-bit OS required since v0.2.0. PyTorch (transitive via
 > `sentence-transformers`) ships no armv7 wheels.
@@ -228,8 +228,12 @@ from the qdrant and api services.
 
 ## Troubleshooting
 
-**`/api/query` returns 503** — embedder or Qdrant index not ready yet.
-Wait ~10 s after first start; retry.
+**`/api/query` returns 503 with `Retry-After: 5`** — embedder or
+Qdrant index not ready yet. The add-on starts uvicorn immediately
+and loads the embedder + qdrant collection in the background; while
+that's in progress `/api/status` returns
+`{status: "initializing", phase: ...}`. Just retry after the
+suggested delay.
 
 **LLM returns 401 / 403** — wrong API key or wrong model identifier
 for the provider. Double-check the configuration; `llm_api_key` is
