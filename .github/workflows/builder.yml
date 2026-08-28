@@ -49,7 +49,15 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push add-on image
-        uses: home-assistant/builder@2026.06.0
+        # Pin to a version that actually has a matching published
+        # ghcr.io/home-assistant/{arch}-builder image. The action's own
+        # GitHub release tag and its Docker image tag are not always
+        # published together - 2026.06.0 exists as a release but the
+        # image was never pushed ("manifest unknown" at build time,
+        # found when Dependabot bumped to it in #29). Before bumping
+        # this action, verify the image exists first, e.g.:
+        # docker manifest inspect ghcr.io/home-assistant/amd64-builder:<version>
+        uses: home-assistant/builder@2026.03.2
         with:
           args: |
             --${{ matrix.arch }} \
