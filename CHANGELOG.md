@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-08-28
+
+Dependabot cluster consolidated into one release instead of ten
+sequential single-PR merges (avoids rebase-cascade on the other open
+branches, one release commit instead of ten atomic "Bump X from A to
+B"s).
+
+### Changed
+
+- `docker/login-action` 3 → 4.5.2 (also fixes a Node.js 20 deprecation
+  warning surfaced during the v0.5.0 builder run — GitHub forces
+  Node 24 from 2026-06-02 and removes Node 20 entirely 2026-09-16).
+- `actions/setup-python` 6.2.0 → 7.0.0
+- `actions/checkout` 6.0.2 → 7.0.1
+- `qdrant/qdrant` v1.17.1 → v1.18.3 (Dockerfile base for the sidecar binary)
+- `home-assistant/builder` 2025.03.0 → 2026.06.0
+- `uvicorn` 0.46.0 → 0.47.0
+- `ruff` 0.15.12 → 0.15.13
+- `sentence-transformers` 5.4.1 → 5.5.0
+- `qdrant-client` 1.17.1 → 1.18.0
+- `einops` 0.8.1 → 0.8.2
+
+### Notes
+
+- 95 tests pass, ruff clean, no Python source changes apart from
+  dependency version pins.
+
 ## [0.5.0] - 2026-05-08
 
 The "no more local build" release. Closes the structural gap that
