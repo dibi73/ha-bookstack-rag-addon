@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-08-28
+
+### Fixed
+
+- `home-assistant/builder` pinned to `2026.03.2` instead of `2026.06.0`.
+  v0.5.1's Dependabot bump to `2026.06.0` broke the release-triggered
+  build: the GitHub release exists, but no matching Docker image was
+  ever published to `ghcr.io/home-assistant/{arch}-builder` under that
+  tag ("manifest unknown"). `2026.03.2` is the newest version that
+  actually has a published image. This class of break only surfaces on
+  a real `release: published` trigger, not on PR CI (which builds via
+  plain `docker build`, not this action) — found immediately after
+  cutting v0.5.1.
+
 ## [0.5.1] - 2026-08-28
 
 Dependabot cluster consolidated into one release instead of ten
