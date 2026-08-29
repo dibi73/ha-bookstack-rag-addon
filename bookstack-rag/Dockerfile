@@ -20,7 +20,7 @@
 # build.yaml's `build_from` map.
 ARG BUILD_FROM=python:3.12-slim-bookworm
 
-FROM qdrant/qdrant:v1.18.3 AS qdrant_source
+FROM qdrant/qdrant:v1.19.0 AS qdrant_source
 
 FROM ${BUILD_FROM}
 
