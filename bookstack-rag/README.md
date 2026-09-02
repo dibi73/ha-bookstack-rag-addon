@@ -1,20 +1,31 @@
 # BookStack RAG
 
-Local Retrieval-Augmented-Generation (RAG) over the Markdown export
-produced by the
+Ask questions about your smart home in plain language and get answers
+straight from your own documentation — no cloud service required.
+
+This add-on indexes the Markdown export produced by the sister
+integration
 [`ha-bookstack-sync`](https://github.com/dibi73/ha-bookstack-sync)
-integration.
+(a local mirror of your BookStack wiki) and makes it searchable
+through a built-in chat UI. Search itself runs fully offline; handing
+the retrieved context to an LLM for a written-out answer is optional
+and off by default.
 
-> Seit v0.5.0 zieht der HA-Supervisor vorgebaute Images von ghcr.io
-> (~2 Min Erstinstall) statt lokal zu bauen. Multi-Arch (amd64 +
-> aarch64) — Pi 4/5 brauchen ein 64-bit OS.
+**Requirements**: `ha-bookstack-sync` must already be exporting to
+`<config>/bookstack_export/`. 64-bit OS (Pi 4/5 need a 64-bit image),
+~3 GB free disk space for the add-on image, ~2 GB free RAM at runtime.
 
-## Stage 3 — v0.5.0
+## Getting started
 
-Built-in vanilla web UI plus source-link enrichment. Open the add-on
-panel in Home Assistant, ask a question, read the streamed answer with
-inline links jumping back to BookStack (for the doc) or to the HA
-frontend (to edit the device directly).
+1. Install and configure [`ha-bookstack-sync`](https://github.com/dibi73/ha-bookstack-sync)
+   first, if you haven't already, so it's exporting your BookStack
+   docs to Markdown.
+2. Install and start this add-on.
+3. Open *Settings → Add-ons → BookStack RAG → Open Web UI* and ask a
+   question. Answers can link back to the source BookStack page or the
+   matching Home Assistant device/automation page.
+4. Optional: set an LLM endpoint under the add-on's "LLM" configuration
+   options to get synthesised answers instead of raw search hits.
 
 ## Configuration
 

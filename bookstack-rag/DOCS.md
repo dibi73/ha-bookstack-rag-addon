@@ -2,11 +2,10 @@
 
 This page is rendered inside the Home Assistant Add-on UI.
 
-> Seit v0.5.0 pullt der HA-Supervisor vorgebaute Images von ghcr.io
-> (~2 Min Erstinstall) statt lokal zu bauen. Multi-Arch (amd64 +
-> aarch64). Auf dem HA-Host werden ~3 GB freier Disk-Platz für das
-> Image und ~2 GB freier RAM zur Laufzeit gebraucht (PyTorch +
-> Embedding-Modell + Qdrant + FastAPI).
+**Requirements**: 64-bit OS, multi-arch image (amd64 + aarch64)
+pulled pre-built from ghcr.io, ~3 GB free disk space for the image,
+~2 GB free RAM at runtime (PyTorch + embedding model + Qdrant +
+FastAPI).
 
 ## What this add-on does
 
@@ -31,16 +30,15 @@ The full pipeline:
    (`<doc>` marker tags). Optional multi-turn chat history is persisted
    in SQLite at `/data/conversations.db`.
 
-## Current stage
+## Web UI
 
-**Stage 3 — v0.5.0.** Built-in web UI mounted at the add-on's ingress
-panel root: open *Settings → Add-ons → BookStack RAG → Open Web UI*
-and you land in a full chat interface (sidebar with chat history,
-streaming Markdown answers, mobile-responsive). REST endpoints remain
-available for programmatic access. Since v0.4.5 the cold-start path is
-non-blocking — the panel loads in <1 s and the SPA polls
-`/api/status` for the actual readiness phase. Since v0.5.0 multi-arch
-images are pulled from ghcr.io.
+Built-in web UI mounted at the add-on's ingress panel root: open
+*Settings → Add-ons → BookStack RAG → Open Web UI* and you land in a
+full chat interface (sidebar with chat history, streaming Markdown
+answers, mobile-responsive). REST endpoints remain available for
+programmatic access. The panel loads in <1 s regardless of backend
+readiness — the SPA polls `/api/status` for the actual phase while the
+embedder and Qdrant collection load in the background.
 
 > 64-bit OS required since v0.2.0. PyTorch (transitive via
 > `sentence-transformers`) ships no armv7 wheels.
