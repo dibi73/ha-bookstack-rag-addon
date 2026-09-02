@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `README.md`/`DOCS.md`: replaced the German dev-changelog blockquote
+  that sat before any explanation of what the add-on does with a
+  plain-English intro + requirements + getting-started section (#47).
+- Added `icon.png` (128×128) and `logo.png` (256×256), derived from
+  `ha-bookstack-sync`'s existing brand icon — Supervisor previously
+  fell back to a generic default icon in the Add-on Store (#47).
+
 ## [0.5.4] - 2026-09-02
 
 ### Fixed
