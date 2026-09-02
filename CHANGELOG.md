@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-09-02
+
+### Fixed
+
+- `builder.yml`'s `--image` argument no longer includes the `ghcr.io/`
+  prefix. `home-assistant/builder` always pushes to `ghcr.io` and
+  prepends that prefix itself, so passing it explicitly doubled it -
+  the actually-published v0.5.2 image ended up at
+  `ghcr.io/dibi73/ghcr.io/dibi73/{arch}-bookstack-rag-addon`, a path
+  Supervisor never looks at, so the add-on installation failed with
+  "An unknown error occurred". Confirmed directly against the GHCR
+  Docker Registry v2 API and the v0.5.2 build job's own log
+  (`Init cache for ghcr.io/dibi73/ghcr.io/dibi73/...`).
+
 ## [0.5.2] - 2026-08-28
 
 ### Fixed
