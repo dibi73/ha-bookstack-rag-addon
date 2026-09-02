@@ -58,16 +58,23 @@ jobs:
         # this action, verify the image exists first, e.g.:
         # docker manifest inspect ghcr.io/home-assistant/amd64-builder:<version>
         #
-        # --image must be "{owner}/{arch}-...", NOT "ghcr.io/{owner}/...":
-        # the action always pushes to ghcr.io and prepends "ghcr.io/"
-        # itself, so a value that already includes it gets published
-        # twice ("ghcr.io/dibi73/ghcr.io/dibi73/..."), which Supervisor
-        # then can't pull (v0.5.2, found via failed add-on install).
+        # --image must be JUST "{arch}-...", with NEITHER "ghcr.io/" NOR
+        # the owner: the action always publishes to
+        # "ghcr.io/{repository_owner}/<value of --image>" and prepends
+        # that itself. v0.5.3 passed "${{ github.repository_owner }}/{arch}-..."
+        # (dropping only the "ghcr.io/" part) and still ended up doubled,
+        # this time on the owner segment
+        # ("ghcr.io/dibi73/dibi73/{arch}-bookstack-rag-addon") - confirmed
+        # from that build's own log ("Init cache for
+        # ghcr.io/dibi73/dibi73/amd64-bookstack-rag-addon:0.5.3"). v0.5.2
+        # had the same bug one level up (full "ghcr.io/dibi73/" doubled).
+        # Supervisor pulls from the plain, single-prefixed path in
+        # config.yaml's `image:` field - only that shape is correct.
         uses: home-assistant/builder@2026.03.2
         with:
           args: |
             --${{ matrix.arch }} \
             --target bookstack-rag \
-            --image "${{ github.repository_owner }}/{arch}-bookstack-rag-addon" \
+            --image "{arch}-bookstack-rag-addon" \
             --version "${{ steps.version.outputs.version }}" \
             --docker-hub-check
