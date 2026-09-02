@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-09-02
+
+### Fixed
+
+- v0.5.3's fix was incomplete: dropping only the `ghcr.io/` part of
+  `--image` still left the repository owner in it
+  (`dibi73/{arch}-bookstack-rag-addon`), and `home-assistant/builder`
+  prepends `ghcr.io/{owner}/` to whatever `--image` is regardless -
+  so v0.5.3 published to the still-wrong, still-doubled
+  `ghcr.io/dibi73/dibi73/{arch}-bookstack-rag-addon` (confirmed from
+  that build's own log). `--image` must be just `{arch}-...`, with no
+  owner and no registry at all.
+
 ## [0.5.3] - 2026-09-02
 
 ### Fixed
