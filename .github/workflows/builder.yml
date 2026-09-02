@@ -57,11 +57,17 @@ jobs:
         # found when Dependabot bumped to it in #29). Before bumping
         # this action, verify the image exists first, e.g.:
         # docker manifest inspect ghcr.io/home-assistant/amd64-builder:<version>
+        #
+        # --image must be "{owner}/{arch}-...", NOT "ghcr.io/{owner}/...":
+        # the action always pushes to ghcr.io and prepends "ghcr.io/"
+        # itself, so a value that already includes it gets published
+        # twice ("ghcr.io/dibi73/ghcr.io/dibi73/..."), which Supervisor
+        # then can't pull (v0.5.2, found via failed add-on install).
         uses: home-assistant/builder@2026.03.2
         with:
           args: |
             --${{ matrix.arch }} \
             --target bookstack-rag \
-            --image "ghcr.io/${{ github.repository_owner }}/{arch}-bookstack-rag-addon" \
+            --image "${{ github.repository_owner }}/{arch}-bookstack-rag-addon" \
             --version "${{ steps.version.outputs.version }}" \
             --docker-hub-check
