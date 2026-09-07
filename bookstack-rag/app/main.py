@@ -39,9 +39,10 @@ class StartupState:
     """Tracks heavy-init progress so /api/status can surface it to the UI.
 
     Phase progression is monotonic during a healthy boot:
-    starting → loading_embedder → creating_collection → indexing → ready.
-    Any uncaught exception in the background init flips us to ``failed``
-    and parks ``error`` with a human-readable message for the SPA to show.
+    starting → waiting_before_startup → loading_embedder →
+    creating_collection → indexing → ready. Any uncaught exception in the
+    background init flips us to ``failed`` and parks ``error`` with a
+    human-readable message for the SPA to show.
     """
 
     phase: str = "starting"
@@ -58,10 +59,26 @@ async def _run_startup(app: FastAPI) -> None:
     entire startup duration — users saw "add-on dead". By moving the heavy
     chain into a background task we yield in <1 s; the SPA loads and polls
     ``/api/status`` for the actual readiness phase.
+
+    ``startup_delay_seconds`` (issue #50): loading the embedder is the single
+    biggest memory spike this add-on causes (torch + sentence-transformers,
+    ~2 GiB RSS observed). On a memory-constrained host, every add-on tends to
+    start at once right after a reboot/update — the worst possible moment for
+    that spike to land and risk an OOM-kill of an unrelated process. Waiting
+    here (default 60s) lets the rest of the boot storm settle first.
     """
     config: Config = app.state.config
     startup: StartupState = app.state.startup
     try:
+        if config.startup_delay_seconds > 0:
+            startup.phase = "waiting_before_startup"
+            logger.info(
+                "Delaying heavy startup by %ds to avoid colliding with the "
+                "post-boot memory storm of other add-ons (see issue #50)",
+                config.startup_delay_seconds,
+            )
+            await asyncio.sleep(config.startup_delay_seconds)
+
         startup.phase = "loading_embedder"
         embedder = SentenceTransformerEmbedder(model_name=config.embedding_model)
         await asyncio.to_thread(embedder.load)

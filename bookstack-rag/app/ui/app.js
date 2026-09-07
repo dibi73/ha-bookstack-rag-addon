@@ -135,6 +135,7 @@
   function phaseLabel(phase, indexed) {
     switch (phase) {
       case "starting": return "Startet …";
+      case "waiting_before_startup": return "Wartet (Boot-Entzerrung) …";
       case "loading_embedder": return "Lädt Modell …";
       case "creating_collection": return "Bereitet Index vor …";
       case "indexing": return `Indiziert (${indexed}) …`;
@@ -145,6 +146,7 @@
   function phasePlaceholder(phase) {
     switch (phase) {
       case "starting": return "Add-on initialisiert, bitte warten …";
+      case "waiting_before_startup": return "Wartet bewusst kurz, um nicht mit anderen Add-ons um Speicher zu konkurrieren …";
       case "loading_embedder": return "Lädt Embedding-Modell, bitte warten …";
       case "creating_collection": return "Bereitet Index vor, bitte warten …";
       case "indexing": return "Frage eingeben — Index wird im Hintergrund aufgebaut";

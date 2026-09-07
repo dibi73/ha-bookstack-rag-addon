@@ -13,6 +13,7 @@ DEFAULT_EMBEDDING_MODEL = "nomic-ai/nomic-embed-text-v1.5"
 DEFAULT_TOP_K = 5
 DEFAULT_MAX_TURNS = 20
 DEFAULT_LLM_TIMEOUT = 60
+DEFAULT_STARTUP_DELAY_SECONDS = 60
 DEFAULT_CONVERSATIONS_DB = Path("/data/conversations.db")
 QDRANT_URL = "http://localhost:6333"
 QDRANT_COLLECTION = "bookstack_smart_home"
@@ -37,6 +38,7 @@ class Config:
     conversations_db_path: Path
     bookstack_base_url: str
     homeassistant_base_url: str
+    startup_delay_seconds: int
 
 
 def _resolve_options_path(options_path: Path | None) -> Path:
@@ -63,6 +65,9 @@ def load_config(options_path: Path | None = None) -> Config:
     raw_qdrant_collection = data.get("qdrant_collection") or QDRANT_COLLECTION
     raw_max_turns = data.get("max_turns") or DEFAULT_MAX_TURNS
     raw_llm_timeout = data.get("llm_timeout") or DEFAULT_LLM_TIMEOUT
+    raw_startup_delay = data.get("startup_delay_seconds")
+    if raw_startup_delay is None:
+        raw_startup_delay = DEFAULT_STARTUP_DELAY_SECONDS
     raw_conversations_db = data.get("conversations_db_path") or str(
         DEFAULT_CONVERSATIONS_DB
     )
@@ -82,4 +87,5 @@ def load_config(options_path: Path | None = None) -> Config:
         conversations_db_path=Path(str(raw_conversations_db)),
         bookstack_base_url=str(data.get("bookstack_base_url") or ""),
         homeassistant_base_url=str(data.get("homeassistant_base_url") or ""),
+        startup_delay_seconds=int(raw_startup_delay),  # type: ignore[arg-type]
     )

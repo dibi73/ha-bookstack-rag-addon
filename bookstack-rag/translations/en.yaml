@@ -69,6 +69,15 @@ configuration:
       frontend (Devices, Areas, Automations, …) so the LLM and the web UI
       can offer "edit the actual device" jumps. Leave empty to skip HA
       deep-links.
+  startup_delay_seconds:
+    name: Startup delay (seconds)
+    description: >-
+      Wait time before loading the embedding model (torch + sentence-
+      transformers, ~2 GiB RAM observed). Defaults to 60s so that memory
+      spike doesn't land exactly when every other add-on starts at once
+      after a reboot/update (see issue #50 — an OOM-kill in that exact
+      window contributed to a multi-hour outage on the maintainer's
+      production system). Range 0-600s; 0 disables the delay.
 
 network:
   8000/tcp: Web UI port (only used when ingress is disabled — default keeps it through ingress only)
