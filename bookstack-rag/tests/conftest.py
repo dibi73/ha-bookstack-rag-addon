@@ -252,4 +252,5 @@ def base_config(export_dir: Path) -> Config:
         conversations_db_path=export_dir.parent / "conversations.db",
         bookstack_base_url="",
         homeassistant_base_url="",
+        startup_delay_seconds=0,
     )

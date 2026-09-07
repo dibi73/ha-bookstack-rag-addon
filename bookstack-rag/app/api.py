@@ -34,7 +34,13 @@ router = APIRouter()
 # loader instead of a red error pill, and /api/query + /api/reindex respond
 # 503 with Retry-After.
 INITIALIZING_PHASES = frozenset(
-    {"starting", "loading_embedder", "creating_collection", "indexing"},
+    {
+        "starting",
+        "waiting_before_startup",
+        "loading_embedder",
+        "creating_collection",
+        "indexing",
+    },
 )
 NOT_READY_RETRY_AFTER_SECONDS = "5"
 

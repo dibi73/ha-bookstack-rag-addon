@@ -8,6 +8,7 @@ from pathlib import Path
 from app.config import (
     DEFAULT_EMBEDDING_MODEL,
     DEFAULT_EXPORT_PATH,
+    DEFAULT_STARTUP_DELAY_SECONDS,
     DEFAULT_TOP_K,
     QDRANT_COLLECTION,
     QDRANT_URL,
@@ -27,6 +28,30 @@ def test_load_config_with_explicit_path(tmp_path: Path) -> None:
     assert config.top_k == DEFAULT_TOP_K
     assert config.qdrant_url == QDRANT_URL
     assert config.qdrant_collection == QDRANT_COLLECTION
+    assert config.startup_delay_seconds == DEFAULT_STARTUP_DELAY_SECONDS
+
+
+def test_load_config_startup_delay_explicit(tmp_path: Path) -> None:
+    options = tmp_path / "options.json"
+    options.write_text(
+        json.dumps({"startup_delay_seconds": 120}),
+        encoding="utf-8",
+    )
+    config = load_config(options)
+    assert config.startup_delay_seconds == 120
+
+
+def test_load_config_startup_delay_zero_disables_it(tmp_path: Path) -> None:
+    """0 is a meaningful, deliberate value (disable the delay) — must not
+    fall back to the default like the ``or``-based options do for falsy
+    values."""
+    options = tmp_path / "options.json"
+    options.write_text(
+        json.dumps({"startup_delay_seconds": 0}),
+        encoding="utf-8",
+    )
+    config = load_config(options)
+    assert config.startup_delay_seconds == 0
 
 
 def test_load_config_falls_back_when_file_missing(tmp_path: Path) -> None:

@@ -69,6 +69,16 @@ configuration:
       (Geräte, Bereiche, Automationen, …) zu bauen, damit LLM und Web-UI
       „direkt zum Gerät bearbeiten" anbieten können. Leer lassen heißt
       keine HA-Deep-Links.
+  startup_delay_seconds:
+    name: Startverzögerung (Sekunden)
+    description: >-
+      Wartezeit vor dem Laden des Embedding-Modells (Torch + sentence-
+      transformers, ~2 GB RAM-Bedarf beobachtet). Standardmäßig 60s, damit
+      dieser Speicher-Peak nicht genau in dem Moment passiert, in dem nach
+      einem Reboot/Update alle anderen Add-ons gleichzeitig starten (siehe
+      Issue #50 — ein OOM-Kill genau in diesem Fenster hat auf Daniels
+      Produktivsystem einen mehrstündigen Ausfall mitverursacht). Bereich
+      0-600s; 0 deaktiviert die Verzögerung.
 
 network:
   8000/tcp: Web-UI-Port (nur relevant wenn Ingress deaktiviert ist — Default lässt den Zugriff ausschließlich über Ingress laufen)
