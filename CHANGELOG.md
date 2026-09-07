@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-09-07
+
+### Added
+
+- `startup_delay_seconds` option (default 60, 0 disables it): delays the
+  heavy init chain (embedder load, Qdrant collection, initial reconcile,
+  watcher start) so it doesn't collide with every other add-on starting
+  at once right after a host reboot/update. Loading the embedder is the
+  single biggest memory spike this add-on causes (~2 GiB RSS observed);
+  an OOM-kill in exactly that window contributed to a multi-hour outage
+  on the maintainer's production system, confirmed via `dmesg` (#50).
+  Surfaced via a new `waiting_before_startup` `/api/status` phase.
+
 ### Changed
 
 - `README.md`/`DOCS.md`: replaced the German dev-changelog blockquote
