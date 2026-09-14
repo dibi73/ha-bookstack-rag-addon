@@ -70,7 +70,7 @@ jobs:
         # had the same bug one level up (full "ghcr.io/dibi73/" doubled).
         # Supervisor pulls from the plain, single-prefixed path in
         # config.yaml's `image:` field - only that shape is correct.
-        uses: home-assistant/builder@2026.03.2
+        uses: home-assistant/builder@2026.09.0
         with:
           args: |
             --${{ matrix.arch }} \
